@@ -1,0 +1,12 @@
+{
+  "/api/v3": {
+    "target": "https://www.strava.com",
+    "secure": true,
+    "changeOrigin": true
+  },
+  "/oauth/token": {
+    "target": "https://www.strava.com",
+    "secure": true,
+    "changeOrigin": true
+  }
+}
