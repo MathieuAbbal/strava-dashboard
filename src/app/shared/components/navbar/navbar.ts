@@ -1,5 +1,5 @@
 import { Component, inject, afterNextRender, signal, HostListener } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { StravaService } from '../../../core/services/strava.service';
 
 /**
@@ -101,6 +101,11 @@ import { StravaService } from '../../../core/services/strava.service';
                       <span class="text-slate-400">Dénivelé total</span>
                       <span class="font-semibold text-slate-700">{{ strava.totalElevation() }} m</span>
                     </div>
+                    <hr class="border-slate-200 !my-3" />
+                    <button (click)="logout($event)"
+                            class="w-full text-left text-red-500 hover:text-red-600 font-medium cursor-pointer transition-colors">
+                      Se déconnecter
+                    </button>
                   </div>
                 </div>
               }
@@ -113,6 +118,7 @@ import { StravaService } from '../../../core/services/strava.service';
 })
 export class Navbar {
   protected readonly strava = inject(StravaService);
+  private readonly router = inject(Router);
   protected readonly profileOpen = signal(false);
 
   @HostListener('document:click', ['$event'])
@@ -121,6 +127,13 @@ export class Navbar {
     if (!target.closest('.relative')) {
       this.profileOpen.set(false);
     }
+  }
+
+  logout(event: Event): void {
+    event.stopPropagation();
+    this.profileOpen.set(false);
+    this.strava.logout();
+    this.router.navigate(['/login']);
   }
 
   constructor() {

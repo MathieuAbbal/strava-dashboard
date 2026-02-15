@@ -51,6 +51,9 @@ export class StravaService {
   /** Signal : message d'erreur */
   readonly error = signal<string | null>(null);
 
+  /** Signal : l'utilisateur est-il authentifié ? */
+  readonly authenticated = signal(!!this.accessToken);
+
   /** Computed : nombre total d'activités chargées */
   readonly activitiesCount = computed(() => this.activities().length);
 
@@ -72,6 +75,76 @@ export class StravaService {
     const seconds = this.activities().reduce((sum, a) => sum + a.moving_time, 0);
     return Math.round((seconds / 3600) * 10) / 10;
   });
+
+  /**
+   * Rediriger vers la page d'autorisation Strava
+   */
+  login(): void {
+    const params = new URLSearchParams({
+      client_id: environment.strava.clientId,
+      response_type: 'code',
+      redirect_uri: environment.strava.redirectUri,
+      scope: 'read,activity:read_all,profile:read_all',
+      approval_prompt: 'auto'
+    });
+    window.location.href = `https://www.strava.com/oauth/authorize?${params}`;
+  }
+
+  /**
+   * Échanger le code d'autorisation contre des tokens
+   */
+  async handleOAuthCallback(code: string): Promise<boolean> {
+    try {
+      this.loading.set(true);
+      const response = await fetch(environment.strava.oauthUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: environment.strava.clientId,
+          client_secret: environment.strava.clientSecret,
+          code,
+          grant_type: 'authorization_code'
+        })
+      });
+
+      if (!response.ok) return false;
+
+      const data = await response.json();
+      this.accessToken = data.access_token;
+      this.refreshToken = data.refresh_token;
+      this.expiresAt = data.expires_at;
+
+      localStorage.setItem(STORAGE_ACCESS_TOKEN, data.access_token);
+      localStorage.setItem(STORAGE_REFRESH_TOKEN, data.refresh_token);
+      localStorage.setItem(STORAGE_EXPIRES_AT, data.expires_at.toString());
+
+      this.authenticated.set(true);
+      if (data.athlete) {
+        this.athlete.set(data.athlete);
+      }
+      return true;
+    } catch {
+      return false;
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  /**
+   * Déconnecter l'utilisateur
+   */
+  logout(): void {
+    this.accessToken = '';
+    this.refreshToken = '';
+    this.expiresAt = 0;
+    localStorage.removeItem(STORAGE_ACCESS_TOKEN);
+    localStorage.removeItem(STORAGE_REFRESH_TOKEN);
+    localStorage.removeItem(STORAGE_EXPIRES_AT);
+    this.authenticated.set(false);
+    this.athlete.set(null);
+    this.activities.set([]);
+    this.stats.set(null);
+  }
 
   /**
    * En-têtes d'authentification pour l'API Strava
