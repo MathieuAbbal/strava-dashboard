@@ -1,2 +1,32 @@
 @import "tailwindcss";
 @import "maplibre-gl/dist/maplibre-gl.css";
+
+@theme {
+  --color-strava: #FC4C02;
+  --color-strava-dark: #E04400;
+  --color-strava-light: #FF6B2B;
+  --color-navy: #1B1F3B;
+  --color-navy-light: #2A2F52;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #f0f2f5 0%, #e8ecf1 100%);
+  min-height: 100vh;
+}
+
+/* Scrollbar moderne */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c1c7d0; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #a0a8b4; }
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out;
+}

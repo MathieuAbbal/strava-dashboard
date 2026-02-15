@@ -11,9 +11,9 @@ import { Navbar } from './shared/components/navbar/navbar';
   standalone: true,
   imports: [RouterOutlet, Navbar],
   template: `
-    <div class="min-h-screen bg-gray-100">
+    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <app-navbar />
-      <main>
+      <main class="animate-fade-in">
         <router-outlet />
       </main>
     </div>

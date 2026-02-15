@@ -7,6 +7,7 @@ export const environment = {
   production: false,
   strava: {
     apiUrl: '/api/v3',
+    oauthUrl: '/oauth/token',
     clientId: '166994',
     clientSecret: '0a96d93dc3c7d23aa25562690e84fd830718bdec',
     accessToken: 'e44e2e323800f3530c6b8c70c1b4cbe129028ce6',

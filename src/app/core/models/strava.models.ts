@@ -41,11 +41,47 @@ export interface ActivitySummary {
 export interface ActivityDetail extends ActivitySummary {
   description: string;
   calories: number;
+  average_cadence?: number;   // Pas/min (course) ou rpm (vélo)
+  elev_high?: number;         // Altitude max (m)
+  elev_low?: number;          // Altitude min (m)
   map: {
     id: string;
     summary_polyline: string;
     polyline: string;         // Polyline complète du tracé
   };
+}
+
+/** Lap/split d'une activité (retourné par GET /activities/{id}/laps) */
+export interface Lap {
+  lap_index: number;
+  distance: number;              // En mètres
+  elapsed_time: number;          // En secondes
+  moving_time: number;           // En secondes
+  average_speed: number;         // En m/s
+  max_speed: number;             // En m/s
+  total_elevation_gain: number;  // En mètres
+  average_cadence?: number;
+  average_heartrate?: number;
+  max_heartrate?: number;
+}
+
+/** Record personnel dérivé des activités */
+export interface PersonalRecord {
+  label: string;
+  value: string;
+  activityName: string;
+  activityId: number;
+  date: string;
+  icon: string;
+}
+
+/** Stream de données d'une activité (retourné par GET /activities/{id}/streams) */
+export interface ActivityStream {
+  type: string;
+  data: number[];
+  series_type: string;
+  original_size: number;
+  resolution: string;
 }
 
 /** Types d'activité Strava */

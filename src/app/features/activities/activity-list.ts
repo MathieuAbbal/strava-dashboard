@@ -20,18 +20,18 @@ import {
   standalone: true,
   imports: [RouterLink, FormsModule, DecimalPipe],
   template: `
-    <div class="max-w-7xl mx-auto px-4 py-8">
-      <h1 class="text-3xl font-bold text-gray-800 mb-8">Activités</h1>
+    <div class="max-w-7xl mx-auto px-6 py-8">
+      <h1 class="text-3xl font-bold text-slate-800 tracking-tight mb-8">Activités</h1>
 
       <!-- Filtres -->
-      <div class="bg-white rounded-xl shadow-md p-4 mb-6 flex flex-wrap gap-4 items-center">
+      <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 p-5 mb-6 flex flex-wrap gap-5 items-end">
         <!-- Filtre par type -->
         <div>
-          <label class="text-sm text-gray-500 block mb-1">Type d'activité</label>
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Type</label>
           <select
             [ngModel]="selectedType()"
             (ngModelChange)="selectedType.set($event)"
-            class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+            class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-strava/30 focus:border-strava transition-all">
             <option value="">Tous les types</option>
             @for (type of availableTypes(); track type) {
               <option [value]="type">{{ type }}</option>
@@ -41,33 +41,35 @@ import {
 
         <!-- Filtre par date (depuis) -->
         <div>
-          <label class="text-sm text-gray-500 block mb-1">Depuis</label>
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Depuis</label>
           <input type="date"
             [ngModel]="dateFrom()"
             (ngModelChange)="dateFrom.set($event)"
-            class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+            class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-strava/30 focus:border-strava transition-all" />
         </div>
 
         <!-- Filtre par date (jusqu'à) -->
         <div>
-          <label class="text-sm text-gray-500 block mb-1">Jusqu'à</label>
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Jusqu'à</label>
           <input type="date"
             [ngModel]="dateTo()"
             (ngModelChange)="dateTo.set($event)"
-            class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+            class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-strava/30 focus:border-strava transition-all" />
         </div>
 
         <!-- Compteur résultats -->
-        <div class="ml-auto text-sm text-gray-500">
-          {{ filteredActivities().length }} activité(s)
+        <div class="ml-auto">
+          <span class="text-sm font-semibold text-strava bg-strava/10 px-3 py-2 rounded-xl">
+            {{ filteredActivities().length }} activité(s)
+          </span>
         </div>
       </div>
 
       <!-- Message de chargement -->
       @if (strava.loading()) {
-        <div class="text-center py-12">
-          <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-orange-500 border-r-transparent"></div>
-          <p class="mt-2 text-gray-500">Chargement...</p>
+        <div class="text-center py-16">
+          <div class="inline-block h-10 w-10 animate-spin rounded-full border-4 border-strava border-r-transparent"></div>
+          <p class="mt-3 text-slate-400 font-medium">Chargement...</p>
         </div>
       }
 
@@ -75,36 +77,40 @@ import {
       <div class="space-y-3">
         @for (activity of filteredActivities(); track activity.id) {
           <a [routerLink]="['/activities', activity.id]"
-             class="block bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow p-4">
-            <div class="flex items-center gap-4">
+             class="group block bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 hover:shadow-lg hover:border-slate-300/80 transition-all duration-300 p-5 relative overflow-hidden">
+            <!-- Bande de couleur à gauche -->
+            <div class="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl transition-all duration-300 group-hover:w-1.5"
+                 [style.background-color]="getColor(activity.type)"></div>
+
+            <div class="flex items-center gap-4 pl-3">
               <!-- Icône type -->
-              <div class="text-3xl">{{ getIcon(activity.type) }}</div>
+              <div class="text-3xl w-12 h-12 flex items-center justify-center rounded-xl bg-slate-50 group-hover:scale-110 transition-transform duration-300">{{ getIcon(activity.type) }}</div>
 
               <!-- Infos principales -->
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
-                  <h3 class="font-semibold text-gray-800 truncate">{{ activity.name }}</h3>
-                  <span class="text-xs px-2 py-0.5 rounded-full text-white"
+                  <h3 class="font-semibold text-slate-800 truncate group-hover:text-strava transition-colors">{{ activity.name }}</h3>
+                  <span class="text-xs font-medium px-2.5 py-0.5 rounded-full text-white shadow-sm"
                         [style.background-color]="getColor(activity.type)">
                     {{ activity.type }}
                   </span>
                 </div>
-                <p class="text-sm text-gray-500">{{ formatDate(activity.start_date) }}</p>
+                <p class="text-sm text-slate-400 mt-0.5">{{ formatDate(activity.start_date) }}</p>
               </div>
 
               <!-- Statistiques -->
-              <div class="flex gap-6 text-sm text-gray-600">
+              <div class="flex gap-8 text-sm">
                 <div class="text-center">
-                  <p class="font-semibold text-gray-800">{{ formatDistance(activity.distance) }}</p>
-                  <p class="text-xs text-gray-400">km</p>
+                  <p class="font-bold text-slate-700 text-base">{{ formatDistance(activity.distance) }}</p>
+                  <p class="text-xs text-slate-400 font-medium">km</p>
                 </div>
                 <div class="text-center">
-                  <p class="font-semibold text-gray-800">{{ formatDuration(activity.moving_time) }}</p>
-                  <p class="text-xs text-gray-400">durée</p>
+                  <p class="font-bold text-slate-700 text-base">{{ formatDuration(activity.moving_time) }}</p>
+                  <p class="text-xs text-slate-400 font-medium">durée</p>
                 </div>
                 <div class="text-center">
-                  <p class="font-semibold text-gray-800">{{ activity.total_elevation_gain | number:'1.0-0' }} m</p>
-                  <p class="text-xs text-gray-400">D+</p>
+                  <p class="font-bold text-slate-700 text-base">{{ activity.total_elevation_gain | number:'1.0-0' }} m</p>
+                  <p class="text-xs text-slate-400 font-medium">D+</p>
                 </div>
               </div>
             </div>
@@ -114,9 +120,9 @@ import {
 
       <!-- Aucun résultat -->
       @if (!strava.loading() && filteredActivities().length === 0) {
-        <div class="text-center py-12 text-gray-400">
-          <p class="text-lg">Aucune activité trouvée</p>
-          <p class="text-sm mt-1">Modifiez vos filtres ou vérifiez votre token Strava</p>
+        <div class="text-center py-16 text-slate-300">
+          <p class="text-xl font-semibold">Aucune activité trouvée</p>
+          <p class="text-sm mt-2 text-slate-400">Modifiez vos filtres ou vérifiez votre token Strava</p>
         </div>
       }
     </div>

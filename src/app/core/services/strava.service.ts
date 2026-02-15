@@ -4,7 +4,9 @@ import {
   Athlete,
   ActivitySummary,
   ActivityDetail,
-  AthleteStats
+  AthleteStats,
+  Lap,
+  ActivityStream
 } from '../models/strava.models';
 
 /** Clés localStorage pour persister les tokens entre les sessions */
@@ -93,7 +95,7 @@ export class StravaService {
    * POST /oauth/token
    */
   private async refreshAccessToken(): Promise<void> {
-    const response = await fetch('/oauth/token', {
+    const response = await fetch(environment.strava.oauthUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -249,6 +251,33 @@ export class StravaService {
       return null;
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  /**
+   * Récupérer les laps/splits d'une activité
+   * GET /activities/:id/laps
+   */
+  async getActivityLaps(id: number): Promise<Lap[]> {
+    try {
+      return await this.fetchApi<Lap[]>(`/activities/${id}/laps`);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Récupérer les streams d'une activité (altitude, FC, vitesse, cadence...)
+   * GET /activities/:id/streams
+   */
+  async getActivityStreams(id: number): Promise<ActivityStream[]> {
+    try {
+      return await this.fetchApi<ActivityStream[]>(`/activities/${id}/streams`, {
+        keys: 'distance,altitude,heartrate,velocity_smooth,cadence',
+        key_type: 'distance'
+      });
+    } catch {
+      return [];
     }
   }
 

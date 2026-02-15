@@ -23,6 +23,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/activities/activity-detail').then(m => m.ActivityDetailComponent)
   },
   {
+    path: 'progression',
+    loadComponent: () => import('./features/progression/progression').then(m => m.Progression)
+  },
+  {
     path: 'map',
     loadComponent: () => import('./features/maps/global-map').then(m => m.GlobalMap)
   }

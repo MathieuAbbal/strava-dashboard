@@ -32,17 +32,17 @@ const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep'
   selector: 'app-dashboard',
   standalone: true,
   template: `
-    <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="max-w-7xl mx-auto px-6 py-8">
       <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
-        <h1 class="text-3xl font-bold text-gray-800">Tableau de bord</h1>
+        <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Tableau de bord</h1>
 
         <!-- Sélecteur de période -->
-        <div class="flex bg-white rounded-xl shadow-md p-1 gap-1">
+        <div class="flex bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-slate-200/60 p-1 gap-1">
           @for (p of periods; track p.key) {
             <button (click)="selectPeriod(p.key)"
                     [class]="selectedPeriod() === p.key
-                      ? 'bg-orange-500 text-white rounded-lg px-4 py-2 text-sm font-medium'
-                      : 'text-gray-600 hover:bg-gray-100 rounded-lg px-4 py-2 text-sm font-medium'">
+                      ? 'bg-strava text-white rounded-lg px-4 py-2 text-sm font-semibold shadow-md'
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200'">
               {{ p.label }}
             </button>
           }
@@ -53,26 +53,26 @@ const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep'
       @if (selectedPeriod() !== 'all') {
         <div class="flex items-center gap-3 mb-6">
           <button (click)="offset.set(offset() - 1)"
-                  class="p-2 rounded-lg hover:bg-gray-200 text-gray-600 transition-colors">
+                  class="p-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-400 hover:text-slate-700 transition-all duration-200">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
           </button>
 
           <button (click)="offset.set(0)"
-                  class="text-sm font-medium px-3 py-1 rounded-lg transition-colors"
+                  class="text-sm font-semibold px-4 py-1.5 rounded-xl transition-all duration-200"
                   [class]="offset() === 0
-                    ? 'text-orange-600 bg-orange-50'
-                    : 'text-gray-700 hover:bg-gray-100 cursor-pointer'">
+                    ? 'text-strava bg-strava/10'
+                    : 'text-slate-600 hover:bg-white hover:shadow-sm cursor-pointer'">
             {{ periodLabel() }}
           </button>
 
           <button (click)="offset.set(offset() + 1)"
                   [disabled]="offset() >= 0"
-                  class="p-2 rounded-lg transition-colors"
+                  class="p-2 rounded-xl transition-all duration-200"
                   [class]="offset() >= 0
-                    ? 'text-gray-300 cursor-not-allowed'
-                    : 'text-gray-600 hover:bg-gray-200'">
+                    ? 'text-slate-200 cursor-not-allowed'
+                    : 'text-slate-400 hover:text-slate-700 hover:bg-white hover:shadow-sm'">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
             </svg>
@@ -80,26 +80,26 @@ const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep'
 
           @if (offset() !== 0) {
             <button (click)="offset.set(0)"
-                    class="text-xs text-orange-500 hover:text-orange-700 ml-1">
+                    class="text-xs font-semibold text-strava hover:text-strava-dark ml-1 transition-colors">
               Aujourd'hui
             </button>
           }
         </div>
       } @else {
-        <p class="text-sm text-gray-500 mb-6">{{ periodLabel() }}</p>
+        <p class="text-sm text-slate-400 mb-6 font-medium">{{ periodLabel() }}</p>
       }
 
       <!-- Chargement -->
       @if (strava.loading()) {
-        <div class="text-center py-12">
-          <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-orange-500 border-r-transparent"></div>
-          <p class="mt-2 text-gray-500">Chargement des données...</p>
+        <div class="text-center py-16">
+          <div class="inline-block h-10 w-10 animate-spin rounded-full border-4 border-strava border-r-transparent"></div>
+          <p class="mt-3 text-slate-400 font-medium">Chargement des données...</p>
         </div>
       }
 
       <!-- Erreur -->
       @if (strava.error()) {
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+        <div class="bg-red-50 border border-red-200 text-red-700 px-5 py-4 rounded-xl mb-6 font-medium">
           {{ strava.error() }}
         </div>
       }
@@ -107,55 +107,81 @@ const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep'
       @if (!strava.loading()) {
         <!-- Cards statistiques -->
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          <div class="bg-white rounded-xl shadow-md p-5 border-l-4 border-orange-500">
-            <p class="text-xs text-gray-500 uppercase tracking-wide">Activités</p>
-            <p class="text-2xl font-bold text-gray-800 mt-1">{{ stats().count }}</p>
+          <div class="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl shadow-lg shadow-orange-500/20 p-5 text-white">
+            <p class="text-xs uppercase tracking-wider opacity-80 font-semibold">Activités</p>
+            <p class="text-3xl font-extrabold mt-2">{{ stats().count }}</p>
           </div>
-          <div class="bg-white rounded-xl shadow-md p-5 border-l-4 border-blue-500">
-            <p class="text-xs text-gray-500 uppercase tracking-wide">Distance</p>
-            <p class="text-2xl font-bold text-gray-800 mt-1">{{ stats().distanceKm }} km</p>
+          <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg shadow-blue-500/20 p-5 text-white">
+            <p class="text-xs uppercase tracking-wider opacity-80 font-semibold">Distance</p>
+            <p class="text-3xl font-extrabold mt-2">{{ stats().distanceKm }} <span class="text-base font-medium opacity-80">km</span></p>
           </div>
-          <div class="bg-white rounded-xl shadow-md p-5 border-l-4 border-green-500">
-            <p class="text-xs text-gray-500 uppercase tracking-wide">Dénivelé</p>
-            <p class="text-2xl font-bold text-gray-800 mt-1">{{ stats().elevation }} m</p>
+          <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-lg shadow-emerald-500/20 p-5 text-white">
+            <p class="text-xs uppercase tracking-wider opacity-80 font-semibold">Dénivelé</p>
+            <p class="text-3xl font-extrabold mt-2">{{ stats().elevation }} <span class="text-base font-medium opacity-80">m</span></p>
           </div>
-          <div class="bg-white rounded-xl shadow-md p-5 border-l-4 border-purple-500">
-            <p class="text-xs text-gray-500 uppercase tracking-wide">Durée</p>
-            <p class="text-2xl font-bold text-gray-800 mt-1">{{ stats().duration }}</p>
+          <div class="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl shadow-lg shadow-violet-500/20 p-5 text-white">
+            <p class="text-xs uppercase tracking-wider opacity-80 font-semibold">Durée</p>
+            <p class="text-3xl font-extrabold mt-2">{{ stats().duration }}</p>
           </div>
-          <div class="bg-white rounded-xl shadow-md p-5 border-l-4 border-cyan-500">
-            <p class="text-xs text-gray-500 uppercase tracking-wide">Moy. / sortie</p>
-            <p class="text-2xl font-bold text-gray-800 mt-1">{{ stats().avgDistanceKm }} km</p>
+          <div class="bg-gradient-to-br from-cyan-500 to-blue-500 rounded-2xl shadow-lg shadow-cyan-500/20 p-5 text-white">
+            <p class="text-xs uppercase tracking-wider opacity-80 font-semibold">Moy. / sortie</p>
+            <p class="text-3xl font-extrabold mt-2">{{ stats().avgDistanceKm }} <span class="text-base font-medium opacity-80">km</span></p>
           </div>
-          <div class="bg-white rounded-xl shadow-md p-5 border-l-4 border-red-500">
-            <p class="text-xs text-gray-500 uppercase tracking-wide">Fréquence</p>
-            <p class="text-2xl font-bold text-gray-800 mt-1">{{ stats().frequency }}</p>
+          <div class="bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl shadow-lg shadow-rose-500/20 p-5 text-white">
+            <p class="text-xs uppercase tracking-wider opacity-80 font-semibold">Fréquence</p>
+            <p class="text-3xl font-extrabold mt-2">{{ stats().frequency }}</p>
           </div>
         </div>
 
+        <!-- Comparaison vs période précédente -->
+        @if (selectedPeriod() !== 'all' && comparison()) {
+          <div class="mb-8 -mt-4">
+            <div class="flex items-center gap-2 mb-2 px-1">
+              <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">{{ comparisonLabel() }}</span>
+              @if (isCurrentPeriod()) {
+                <span class="text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full">période en cours</span>
+              }
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              @for (item of comparison()!; track item.label) {
+                <div class="bg-white/60 backdrop-blur-sm rounded-xl border border-slate-200/40 px-4 py-3 flex items-center justify-between">
+                  <span class="text-xs font-medium text-slate-500">{{ item.label }}</span>
+                  <span class="text-sm font-bold px-2 py-0.5 rounded-lg"
+                        [class]="item.pct >= 0
+                          ? 'text-emerald-700 bg-emerald-100'
+                          : 'text-red-700 bg-red-100'">
+                    {{ item.pct >= 0 ? '+' : '' }}{{ item.pct }}%
+                  </span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
         <!-- Graphiques ligne 1 : barres + camembert -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
-            <h2 class="text-lg font-semibold text-gray-700 mb-4">{{ barChartTitle() }}</h2>
+          <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 p-6 lg:col-span-2 hover:shadow-md transition-shadow duration-300">
+            <h2 class="text-base font-semibold text-slate-700 mb-4">{{ barChartTitle() }}</h2>
             <canvas #barChart></canvas>
           </div>
-          <div class="bg-white rounded-xl shadow-md p-6">
-            <h2 class="text-lg font-semibold text-gray-700 mb-4">Répartition par type</h2>
+          <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 p-6 hover:shadow-md transition-shadow duration-300">
+            <h2 class="text-base font-semibold text-slate-700 mb-4">Répartition par type</h2>
             <canvas #typeChart></canvas>
           </div>
         </div>
 
         <!-- Graphiques ligne 2 : dénivelé + durée -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div class="bg-white rounded-xl shadow-md p-6">
-            <h2 class="text-lg font-semibold text-gray-700 mb-4">{{ elevChartTitle() }}</h2>
+          <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 p-6 hover:shadow-md transition-shadow duration-300">
+            <h2 class="text-base font-semibold text-slate-700 mb-4">{{ elevChartTitle() }}</h2>
             <canvas #elevChart></canvas>
           </div>
-          <div class="bg-white rounded-xl shadow-md p-6">
-            <h2 class="text-lg font-semibold text-gray-700 mb-4">{{ durationChartTitle() }}</h2>
+          <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 p-6 hover:shadow-md transition-shadow duration-300">
+            <h2 class="text-base font-semibold text-slate-700 mb-4">{{ durationChartTitle() }}</h2>
             <canvas #durationChart></canvas>
           </div>
         </div>
+
       }
     </div>
   `
@@ -199,17 +225,18 @@ export class Dashboard {
 
   /** Début et fin de la période sélectionnée (avec offset) */
   private readonly periodRange = computed(() => {
-    const period = this.selectedPeriod();
-    const off = this.offset();
-    const now = new Date();
+    return this.computePeriodRange(this.selectedPeriod(), this.offset());
+  });
 
+  /** Calculer la plage de dates pour une période et un offset donnés */
+  private computePeriodRange(period: Period, off: number): { start: Date | null; end: Date | null } {
+    const now = new Date();
     if (period === 'all') return { start: null, end: null };
 
     let start: Date;
     let end: Date;
 
     if (period === 'week') {
-      // Lundi de la semaine courante + offset
       start = new Date(now);
       const day = start.getDay();
       start.setDate(start.getDate() - (day === 0 ? 6 : day - 1) + off * 7);
@@ -221,13 +248,12 @@ export class Dashboard {
       start = new Date(now.getFullYear(), now.getMonth() + off, 1);
       end = new Date(now.getFullYear(), now.getMonth() + off + 1, 0, 23, 59, 59, 999);
     } else {
-      // year
       start = new Date(now.getFullYear() + off, 0, 1);
       end = new Date(now.getFullYear() + off, 11, 31, 23, 59, 59, 999);
     }
 
     return { start, end };
-  });
+  }
 
   /** Activités filtrées selon la période + offset */
   protected readonly filtered = computed(() => {
@@ -276,6 +302,70 @@ export class Dashboard {
       avgDistanceKm: count > 0 ? (totalDist / count / 1000).toFixed(1) : '0',
       frequency: freqLabel
     };
+  });
+
+  /** Activités de la période précédente (pour comparaison) */
+  private readonly previousFiltered = computed(() => {
+    const period = this.selectedPeriod();
+    if (period === 'all') return [];
+    const all = this.strava.activities();
+    const { start, end } = this.computePeriodRange(period, this.offset() - 1);
+    if (!start || !end) return [];
+    return all.filter(a => {
+      const d = new Date(a.start_date);
+      return d >= start && d <= end;
+    });
+  });
+
+  /** Label descriptif de la comparaison */
+  protected readonly comparisonLabel = computed(() => {
+    const period = this.selectedPeriod();
+    if (period === 'all') return '';
+    const prev = this.computePeriodRange(period, this.offset() - 1);
+    if (!prev.start) return '';
+
+    const start = prev.start;
+    if (period === 'week') {
+      const end = prev.end!;
+      const fmt = (d: Date) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+      return `vs semaine du ${fmt(start)} au ${fmt(end)}`;
+    }
+    if (period === 'month') {
+      return `vs ${start.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}`;
+    }
+    return `vs ${start.getFullYear()}`;
+  });
+
+  /** Indique si la période actuelle est en cours (données partielles) */
+  protected readonly isCurrentPeriod = computed(() => {
+    return this.offset() === 0 && this.selectedPeriod() !== 'all';
+  });
+
+  /** Comparaison en % vs période précédente */
+  protected readonly comparison = computed(() => {
+    if (this.selectedPeriod() === 'all') return null;
+    const curr = this.filtered();
+    const prev = this.previousFiltered();
+    if (prev.length === 0) return null;
+
+    const pct = (c: number, p: number) => p === 0 ? 0 : Math.round((c - p) / p * 100);
+
+    const currDist = curr.reduce((s, a) => s + a.distance, 0);
+    const prevDist = prev.reduce((s, a) => s + a.distance, 0);
+    const currElev = curr.reduce((s, a) => s + a.total_elevation_gain, 0);
+    const prevElev = prev.reduce((s, a) => s + a.total_elevation_gain, 0);
+    const currTime = curr.reduce((s, a) => s + a.moving_time, 0);
+    const prevTime = prev.reduce((s, a) => s + a.moving_time, 0);
+    const currAvg = curr.length > 0 ? currDist / curr.length : 0;
+    const prevAvg = prev.length > 0 ? prevDist / prev.length : 0;
+
+    return [
+      { label: 'Activités', pct: pct(curr.length, prev.length) },
+      { label: 'Distance', pct: pct(currDist, prevDist) },
+      { label: 'Dénivelé', pct: pct(currElev, prevElev) },
+      { label: 'Durée', pct: pct(currTime, prevTime) },
+      { label: 'Moy/sortie', pct: pct(currAvg, prevAvg) }
+    ];
   });
 
   /** Label décrivant la période en cours */
@@ -487,8 +577,10 @@ export class Dashboard {
         datasets: [{
           label: unit,
           data: data.data,
-          backgroundColor: color,
-          borderRadius: 4
+          backgroundColor: color + '99',
+          hoverBackgroundColor: color,
+          borderRadius: 6,
+          borderSkipped: false,
         }]
       },
       options: {
@@ -496,15 +588,25 @@ export class Dashboard {
         plugins: {
           legend: { display: false },
           tooltip: {
+            backgroundColor: '#1B1F3B',
+            titleFont: { weight: 'bold' },
+            padding: 12,
+            cornerRadius: 8,
             callbacks: {
-              label: (item) => `${item.parsed.y} ${unit}`
+              label: (item) => ` ${item.parsed.y} ${unit}`
             }
           }
         },
         scales: {
           y: {
             beginAtZero: true,
-            title: { display: true, text: unit }
+            title: { display: true, text: unit, color: '#94a3b8' },
+            grid: { color: '#f1f5f9' },
+            ticks: { color: '#94a3b8' }
+          },
+          x: {
+            grid: { display: false },
+            ticks: { color: '#94a3b8', maxRotation: 45 }
           }
         }
       }
@@ -528,14 +630,32 @@ export class Dashboard {
         labels: data.labels,
         datasets: [{
           data: data.data,
-          backgroundColor: data.colors
+          backgroundColor: data.colors,
+          borderWidth: 3,
+          borderColor: '#ffffff',
+          hoverBorderColor: '#ffffff',
+          hoverOffset: 8
         }]
       },
       options: {
         responsive: true,
+        cutout: '60%',
         plugins: {
-          legend: { position: 'bottom' },
+          legend: {
+            position: 'bottom',
+            labels: {
+              padding: 16,
+              usePointStyle: true,
+              boxWidth: 8, boxHeight: 8,
+              color: '#64748b',
+              font: { size: 12 }
+            }
+          },
           tooltip: {
+            backgroundColor: '#1B1F3B',
+            titleFont: { weight: 'bold' },
+            padding: 12,
+            cornerRadius: 8,
             callbacks: {
               label: (item) => {
                 const total = item.dataset.data.reduce((s: number, v) => s + (v as number), 0);
