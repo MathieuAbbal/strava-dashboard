@@ -3,7 +3,7 @@ export const environment = {
   strava: {
     apiUrl: 'https://www.strava.com/api/v3',
     oauthUrl: 'https://www.strava.com/oauth/token',
-    redirectUri: 'https://mathieuabbal.github.io/strava-dashboard/',
+    redirectUri: 'https://mathieuabbal.github.io/strava-dashboard',
     clientId: '166994',
     clientSecret: '0a96d93dc3c7d23aa25562690e84fd830718bdec',
     accessToken: '',
