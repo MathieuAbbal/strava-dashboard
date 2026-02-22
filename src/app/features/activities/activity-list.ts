@@ -98,7 +98,7 @@ import {
               <!-- Infos principales -->
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
-                  <h3 class="font-semibold text-slate-800 truncate group-hover:text-strava transition-colors">{{ activity.name }}</h3>
+                  <h3 class="font-semibold text-slate-800 truncate group-hover:text-strava transition-colors hidden sm:inline">{{ activity.name }}</h3>
                   <span class="text-xs font-medium px-2.5 py-0.5 rounded-full text-white shadow-sm"
                         [style.background-color]="getColor(activity.type)">
                     {{ activity.type }}
@@ -117,7 +117,7 @@ import {
                   <p class="font-bold text-slate-700 text-base">{{ formatDuration(activity.moving_time) }}</p>
                   <p class="text-xs text-slate-400 font-medium">durée</p>
                 </div>
-                <div class="text-center">
+                <div class="text-center hidden sm:block">
                   <p class="font-bold text-slate-700 text-base">{{ activity.total_elevation_gain | number:'1.0-0' }} m</p>
                   <p class="text-xs text-slate-400 font-medium">D+</p>
                 </div>
@@ -126,7 +126,7 @@ import {
                   <p class="text-xs text-slate-400 font-medium">{{ isRunType(activity.type) ? 'allure' : 'vitesse' }}</p>
                 </div>
                 @if (activity.average_heartrate) {
-                  <div class="text-center">
+                  <div class="text-center hidden sm:block">
                     <p class="font-bold text-red-500 text-base">{{ activity.average_heartrate | number:'1.0-0' }}</p>
                     <p class="text-xs text-slate-400 font-medium">bpm</p>
                   </div>

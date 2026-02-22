@@ -82,7 +82,7 @@ import { StravaService } from '../../../core/services/strava.service';
                     @if (athlete.state || athlete.country) {
                       <div class="flex justify-between">
                         <span class="text-slate-400">Localisation</span>
-                        <span class="font-semibold text-slate-700">{{ athlete.state }}{{ athlete.state && athlete.country ? ', ' : '' }}{{ athlete.country }}</span>
+                        <span class="font-semibold text-slate-700">{{ athlete.state }}</span>
                       </div>
                     }
                     <div class="flex justify-between">

@@ -42,7 +42,11 @@ const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep'
         <!-- Courbe de progression -->
         <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 p-6 hover:shadow-md transition-shadow duration-300">
           <h2 class="text-base font-semibold text-slate-700 mb-4">Progression depuis mes débuts</h2>
-          <canvas #progressionChart></canvas>
+          <div class="overflow-x-auto">
+            <div class="min-w-[600px] h-[300px] sm:h-[400px]">
+              <canvas #progressionChart></canvas>
+            </div>
+          </div>
         </div>
 
         <!-- Totaux carrière -->
@@ -453,6 +457,7 @@ export class Progression {
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: {
@@ -523,7 +528,7 @@ export class Progression {
           },
           x: {
             grid: { display: false },
-            ticks: { color: '#94a3b8' }
+            ticks: { color: '#94a3b8', maxRotation: 45, autoSkip: true, maxTicksLimit: 12 }
           }
         }
       }

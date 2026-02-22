@@ -1,13 +1,14 @@
 # Strava Dashboard
 
-Dashboard Angular pour visualiser vos activites Strava avec graphiques, cartes interactives et analyse detaillee.
+Dashboard Angular pour visualiser vos activites Strava avec graphiques, cartes interactives et analyse detaillee. Installable en PWA sur mobile et desktop.
 
 ## Stack technique
 
 - **Angular 21** - Standalone components, Signals, Zoneless
-- **Chart.js** - Graphiques (barres km/semaine, camembert, analyse altitude/FC/vitesse)
+- **Chart.js** - Graphiques (barres, camembert, courbes de progression)
 - **MapLibre GL JS** - Cartes interactives des traces GPS avec effet heatmap
 - **Tailwind CSS v4** - Styling utilitaire
+- **PWA** - Service Worker, manifest, installable sur mobile/desktop
 
 ## Installation
 
@@ -131,27 +132,36 @@ En production, l'authentification se fait via OAuth : l'utilisateur clique "Se c
 ## Pages
 
 ### Dashboard (`/dashboard`)
-- Cards statistiques : nombre d'activites, km total, denivele, temps
-- Graphique en barres : kilometres par semaine/mois/annee
-- Camembert : repartition par type d'activite
-- Vue par jour et comparaison annuelle
+- Cards statistiques : activites, km total, denivele, duree, moyenne/sortie, frequence
+- Navigation par periode (semaine, mois, annee, tout) avec fleches precedent/suivant
+- Comparaison vs periode precedente (% evolution)
+- Resume hebdomadaire : calendrier avec dots colores par activite et tooltips detailles
+- Graphiques : km par jour/mois, denivele, duree, repartition par type
 
 ### Activites (`/activities`)
-- Liste des activites avec icone, distance, duree, denivele
+- Liste des activites avec icone, distance, duree, denivele, allure/vitesse, FC, watts
+- Separateurs visuels par mois
 - Filtres par type d'activite et plage de dates
-- Clic sur une activite pour voir le detail
+- Compteur de resultats
 
 ### Detail activite (`/activities/:id`)
 - Statistiques detaillees (allure, FC, calories, splits...)
 - Carte MapLibre avec le trace GPS complet
 - Graphique d'analyse : altitude en fond + overlays FC, vitesse/allure, cadence
   - Lissage par moyenne glissante
-  - Bandes verticales par metrique (comme Strava)
+  - Bandes verticales par metrique
+- Best efforts avec badges PR (or, argent, bronze)
+- Segments traverses avec pente, categorie et classement
 - Tableau des splits/laps
 
 ### Progression (`/progression`)
-- Suivi de la progression sur la duree
-- Statistiques comparatives
+- Courbe de progression depuis les debuts : distance, nombre d'activites, allure moyenne
+- Totaux carriere : distance totale, denivele, temps, nombre d'activites
+- Records personnels avec tooltips explicatifs :
+  - Plus longue course, meilleur 5k/10k/semi (estime)
+  - Plus longue sortie velo, vitesse max velo
+  - Plus gros denivele, plus longue activite
+  - FC max, meilleur volume hebdo, plus long streak
 
 ### Carte globale (`/map`)
 - Toutes les activites superposees sur une carte avec effet heatmap
@@ -162,7 +172,7 @@ En production, l'authentification se fait via OAuth : l'utilisateur clique "Se c
 
 ### Navbar
 - Navigation responsive : icones sur mobile, texte sur desktop
-- Profil athlete avec dropdown (photo, stats globales)
+- Profil athlete avec dropdown (photo, localisation)
 
 ## Structure du projet
 
@@ -173,22 +183,25 @@ src/
 │   └── environment.production.ts     # Config prod (URLs directes Strava)
 ├── app/
 │   ├── core/
-│   │   ├── models/strava.models.ts   # Interfaces TypeScript
+│   │   ├── models/strava.models.ts   # Interfaces TypeScript (Athlete, Activity, Segment, Split...)
 │   │   ├── guards/auth.guard.ts      # Protection des routes (redirection login)
 │   │   ├── services/strava.service.ts # Appels API + OAuth + refresh auto
 │   │   └── utils/
-│   │       ├── format.ts             # Formatage (km, duree, couleurs, traductions)
+│   │       ├── format.ts             # Formatage (km, duree, allure, couleurs, traductions)
 │   │       └── polyline.ts           # Decodeur polyline Google
 │   ├── features/
 │   │   ├── auth/login.ts             # Page de connexion OAuth
-│   │   ├── dashboard/dashboard.ts    # Dashboard + Chart.js
+│   │   ├── dashboard/dashboard.ts    # Dashboard + Chart.js + calendrier hebdo
 │   │   ├── activities/
-│   │   │   ├── activity-list.ts      # Liste filtrable
-│   │   │   └── activity-detail.ts    # Detail + carte + analyse
-│   │   ├── progression/progression.ts # Suivi progression
+│   │   │   ├── activity-list.ts      # Liste filtrable avec separateurs mensuels
+│   │   │   └── activity-detail.ts    # Detail + carte + analyse + segments + best efforts
+│   │   ├── progression/progression.ts # Progression + totaux carriere + records
 │   │   └── maps/global-map.ts        # Carte globale heatmap
 │   └── shared/components/
 │       └── navbar/navbar.ts          # Navigation + profil athlete
+├── public/
+│   ├── manifest.webmanifest          # Manifest PWA
+│   └── icons/                        # Icones PWA (72px a 512px)
 └── .github/workflows/
     └── deploy.yml                    # CI/CD GitHub Pages
 ```
@@ -200,7 +213,7 @@ src/
 | `POST /oauth/token` | Echange code / refresh token |
 | `GET /athlete` | Profil de l'athlete |
 | `GET /athlete/activities` | Liste des activites (pagine) |
-| `GET /activities/:id` | Detail avec trace GPS |
+| `GET /activities/:id` | Detail avec trace GPS, segments, best efforts |
 | `GET /activities/:id/streams` | Streams (altitude, FC, vitesse, cadence) |
 | `GET /activities/:id/laps` | Splits / laps |
 | `GET /athletes/:id/stats` | Statistiques globales |
