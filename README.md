@@ -2,10 +2,6 @@
 
 Dashboard Angular pour visualiser vos activites Strava avec graphiques, cartes interactives et analyse detaillee.
 
-## Demo
-
-Deploye automatiquement sur GitHub Pages : **https://mathieuabbal.github.io/strava-dashboard/**
-
 ## Stack technique
 
 - **Angular 21** - Standalone components, Signals, Zoneless
@@ -16,30 +12,55 @@ Deploye automatiquement sur GitHub Pages : **https://mathieuabbal.github.io/stra
 ## Installation
 
 ```bash
+git clone https://github.com/MathieuAbbal/strava-dashboard.git
+cd strava-dashboard
 npm install
 ```
 
 ## Configuration Strava
 
-1. Creer une application sur [strava.com/settings/api](https://www.strava.com/settings/api)
-2. Configurer le **Authorization Callback Domain** : `localhost`
-3. Autoriser l'application avec les bons scopes :
+Chaque developpeur doit creer sa propre application Strava pour obtenir ses propres cles API.
+
+### 1. Creer une application Strava
+
+1. Connectez-vous sur [strava.com](https://www.strava.com)
+2. Allez sur [strava.com/settings/api](https://www.strava.com/settings/api)
+3. Remplissez le formulaire :
+   - **Application Name** : le nom de votre choix
+   - **Category** : Autre
+   - **Website** : votre URL (ou laisser vide)
+   - **Authorization Callback Domain** : `localhost`
+4. Notez votre **Client ID** et **Client Secret**
+
+### 2. Obtenir vos tokens
+
+Ouvrez cette URL dans votre navigateur (remplacez `VOTRE_CLIENT_ID`) :
 
 ```
 https://www.strava.com/oauth/authorize?client_id=VOTRE_CLIENT_ID&response_type=code&redirect_uri=http://localhost&scope=read,activity:read_all,profile:read_all&approval_prompt=force
 ```
 
-4. Recuperer le code dans l'URL de redirection et l'echanger :
+Autorisez l'application. Vous serez redirige vers une URL du type :
+
+```
+http://localhost/?state=&code=VOTRE_CODE&scope=read,activity:read_all,profile:read_all
+```
+
+Copiez le `code` et echangez-le contre des tokens :
 
 ```bash
 curl -X POST https://www.strava.com/oauth/token \
   -d client_id=VOTRE_CLIENT_ID \
   -d client_secret=VOTRE_SECRET \
-  -d code=LE_CODE \
+  -d code=VOTRE_CODE \
   -d grant_type=authorization_code
 ```
 
-5. Renseigner les tokens dans `src/environments/environment.ts` :
+La reponse contient `access_token`, `refresh_token` et `expires_at`.
+
+### 3. Configurer l'environnement local
+
+Creez ou modifiez le fichier `src/environments/environment.ts` :
 
 ```typescript
 export const environment = {
@@ -47,13 +68,16 @@ export const environment = {
   strava: {
     apiUrl: '/api/v3',
     oauthUrl: '/oauth/token',
+    redirectUri: 'http://localhost:4200',
     clientId: 'VOTRE_CLIENT_ID',
-    clientSecret: 'VOTRE_SECRET',
+    clientSecret: 'VOTRE_CLIENT_SECRET',
     accessToken: 'VOTRE_ACCESS_TOKEN',
     refreshToken: 'VOTRE_REFRESH_TOKEN'
   }
 };
 ```
+
+> **Important** : ne commitez jamais vos tokens personnels. Le fichier `environment.ts` contient vos identifiants prives.
 
 > Le refresh du token est automatique : le service detecte les expirations et renouvelle le token de maniere transparente.
 
@@ -65,15 +89,44 @@ npm start
 
 L'application est disponible sur [http://localhost:4200](http://localhost:4200)
 
-## Deploiement GitHub Pages
+## Deploiement GitHub Pages (optionnel)
 
-Le deploiement est automatique via GitHub Actions a chaque push sur `main`.
+Si vous forkez le projet et souhaitez le deployer sur votre propre GitHub Pages :
 
-Pour activer :
-1. Sur GitHub, aller dans **Settings > Pages > Source** et selectionner **GitHub Actions**
-2. Pousser sur `main` — le workflow build et deploie automatiquement
+### 1. Configurer l'environnement de production
 
-Le build de production utilise `environment.production.ts` avec les URLs directes vers l'API Strava (pas de proxy).
+Modifiez `src/environments/environment.production.ts` avec vos propres cles :
+
+```typescript
+export const environment = {
+  production: true,
+  strava: {
+    apiUrl: 'https://www.strava.com/api/v3',
+    oauthUrl: 'https://www.strava.com/oauth/token',
+    redirectUri: 'https://VOTRE_USER.github.io/strava-dashboard/',
+    clientId: 'VOTRE_CLIENT_ID',
+    clientSecret: 'VOTRE_CLIENT_SECRET',
+    accessToken: '',
+    refreshToken: ''
+  }
+};
+```
+
+### 2. Configurer Strava pour la production
+
+Sur [strava.com/settings/api](https://www.strava.com/settings/api), changez le **Authorization Callback Domain** :
+
+```
+localhost  →  VOTRE_USER.github.io
+```
+
+### 3. Activer GitHub Pages
+
+1. Sur GitHub, allez dans **Settings > Pages > Source** et selectionnez **Deploy from a branch**
+2. Selectionnez la branche **gh-pages** / **/ (root)**
+3. Poussez sur `main` — le workflow build et deploie automatiquement
+
+En production, l'authentification se fait via OAuth : l'utilisateur clique "Se connecter avec Strava" et autorise l'application. Les tokens sont stockes dans le localStorage du navigateur.
 
 ## Pages
 
@@ -116,16 +169,18 @@ Le build de production utilise `environment.production.ts` avec les URLs directe
 ```
 src/
 ├── environments/
-│   ├── environment.ts                # Config dev (proxy local)
+│   ├── environment.ts                # Config dev (proxy local) — vos cles ici
 │   └── environment.production.ts     # Config prod (URLs directes Strava)
 ├── app/
 │   ├── core/
 │   │   ├── models/strava.models.ts   # Interfaces TypeScript
-│   │   ├── services/strava.service.ts # Appels API + refresh auto
+│   │   ├── guards/auth.guard.ts      # Protection des routes (redirection login)
+│   │   ├── services/strava.service.ts # Appels API + OAuth + refresh auto
 │   │   └── utils/
 │   │       ├── format.ts             # Formatage (km, duree, couleurs, traductions)
 │   │       └── polyline.ts           # Decodeur polyline Google
 │   ├── features/
+│   │   ├── auth/login.ts             # Page de connexion OAuth
 │   │   ├── dashboard/dashboard.ts    # Dashboard + Chart.js
 │   │   ├── activities/
 │   │   │   ├── activity-list.ts      # Liste filtrable
@@ -142,6 +197,7 @@ src/
 
 | Endpoint | Description |
 |----------|-------------|
+| `POST /oauth/token` | Echange code / refresh token |
 | `GET /athlete` | Profil de l'athlete |
 | `GET /athlete/activities` | Liste des activites (pagine) |
 | `GET /activities/:id` | Detail avec trace GPS |

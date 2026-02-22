@@ -12,7 +12,7 @@ import {
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 import { StravaService } from '../../core/services/strava.service';
-import { ActivityDetail as ActivityDetailModel, Lap, ActivityStream } from '../../core/models/strava.models';
+import { ActivityDetail as ActivityDetailModel, Lap, ActivityStream, BestEffort } from '../../core/models/strava.models';
 import {
   metersToKm,
   secondsToHoursMin,
@@ -223,6 +223,81 @@ Chart.register(...registerables);
                 </tbody>
               </table>
             </div>
+          </div>
+        }
+
+        <!-- Best Efforts -->
+        @if (act.best_efforts && metricEfforts(act.best_efforts).length > 0) {
+          <div class="mt-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 p-6">
+            <h2 class="text-base font-semibold text-slate-700 mb-4">Meilleurs efforts</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              @for (effort of metricEfforts(act.best_efforts); track effort.id) {
+                <div class="relative rounded-xl border border-slate-200/60 p-4 text-center"
+                     [class]="effort.pr_rank === 1 ? 'bg-amber-50 border-amber-300' : 'bg-slate-50'">
+                  @if (effort.pr_rank === 1) {
+                    <span class="absolute top-2 right-2 text-amber-500 text-xs font-bold">PR</span>
+                  }
+                  @if (effort.pr_rank === 2) {
+                    <span class="absolute top-2 right-2 text-slate-400 text-xs font-bold">2e</span>
+                  }
+                  @if (effort.pr_rank === 3) {
+                    <span class="absolute top-2 right-2 text-amber-700 text-xs font-bold">3e</span>
+                  }
+                  <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">{{ effort.name }}</p>
+                  <p class="text-xl font-extrabold mt-1" [class]="effort.pr_rank === 1 ? 'text-amber-600' : 'text-slate-800'">
+                    {{ formatEffortTime(effort.moving_time) }}
+                  </p>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Segments -->
+        @if (act.segment_efforts && act.segment_efforts.length > 0) {
+          <div class="mt-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 p-6 overflow-auto">
+            <h2 class="text-base font-semibold text-slate-700 mb-4">Segments ({{ act.segment_efforts.length }})</h2>
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-slate-200">
+                  <th class="text-left py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Segment</th>
+                  <th class="text-right py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Dist.</th>
+                  <th class="text-right py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Temps</th>
+                  <th class="text-right py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Pente</th>
+                  <th class="text-center py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Cat.</th>
+                  <th class="text-center py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">PR</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (seg of act.segment_efforts; track seg.id) {
+                  <tr class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                    <td class="py-2.5 px-2 font-semibold text-slate-700 max-w-[200px] truncate">{{ seg.name }}</td>
+                    <td class="py-2.5 px-2 text-right text-slate-600">{{ formatLapDistance(seg.distance) }} km</td>
+                    <td class="py-2.5 px-2 text-right font-semibold text-slate-800">{{ formatEffortTime(seg.moving_time) }}</td>
+                    <td class="py-2.5 px-2 text-right text-slate-600">{{ seg.segment.average_grade | number:'1.1-1' }}%</td>
+                    <td class="py-2.5 px-2 text-center">
+                      @if (seg.segment.climb_category > 0) {
+                        <span class="text-xs font-bold px-2 py-0.5 rounded-full"
+                              [class]="seg.segment.climb_category >= 4 ? 'bg-red-100 text-red-600' : seg.segment.climb_category >= 2 ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-500'">
+                          {{ seg.segment.climb_category === 5 ? 'HC' : 'Cat ' + seg.segment.climb_category }}
+                        </span>
+                      }
+                    </td>
+                    <td class="py-2.5 px-2 text-center">
+                      @if (seg.pr_rank === 1) {
+                        <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-600">PR</span>
+                      }
+                      @if (seg.pr_rank === 2) {
+                        <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">2e</span>
+                      }
+                      @if (seg.pr_rank === 3) {
+                        <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">3e</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
           </div>
         }
       }
@@ -514,6 +589,22 @@ export class ActivityDetailComponent {
   protected getIcon(type: string): string { return activityIcon(type); }
   protected getColor(type: string): string { return activityColor(type); }
   protected formatLapDistance(meters: number): string { return (meters / 1000).toFixed(2); }
+  protected metricEfforts(efforts: BestEffort[]): BestEffort[] {
+    return efforts.filter(e => !e.name.toLowerCase().includes('mile'));
+  }
+
+  protected formatEffortTime(seconds: number): string {
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
 
   protected formatLapPace(lap: Lap): string {
     if (this.isRunning()) {

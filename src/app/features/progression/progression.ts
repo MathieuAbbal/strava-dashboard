@@ -10,6 +10,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { StravaService } from '../../core/services/strava.service';
 import { PersonalRecord } from '../../core/models/strava.models';
+import { secondsToHoursMin } from '../../core/utils/format';
 import { Chart, registerables } from 'chart.js';
 
 Chart.register(...registerables);
@@ -44,6 +45,32 @@ const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep'
           <canvas #progressionChart></canvas>
         </div>
 
+        <!-- Totaux carrière -->
+        @if (careerTotals(); as totals) {
+          <div class="mt-8">
+            <h2 class="text-xl font-bold text-slate-800 tracking-tight mb-4">Totaux carrière</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg shadow-blue-500/20 p-5 text-white">
+                <p class="text-xs uppercase tracking-wider opacity-80 font-semibold">Distance totale</p>
+                <p class="text-3xl font-extrabold mt-2">{{ totals.distanceKm }} <span class="text-base font-medium opacity-80">km</span></p>
+              </div>
+              <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-lg shadow-emerald-500/20 p-5 text-white">
+                <p class="text-xs uppercase tracking-wider opacity-80 font-semibold">Dénivelé total</p>
+                <p class="text-3xl font-extrabold mt-2">{{ totals.elevation }} <span class="text-base font-medium opacity-80">m</span></p>
+              </div>
+              <div class="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl shadow-lg shadow-violet-500/20 p-5 text-white">
+                <p class="text-xs uppercase tracking-wider opacity-80 font-semibold">Temps total</p>
+                <p class="text-3xl font-extrabold mt-2">{{ totals.duration }}</p>
+              </div>
+              <div class="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl shadow-lg shadow-orange-500/20 p-5 text-white">
+                <p class="text-xs uppercase tracking-wider opacity-80 font-semibold">Activités</p>
+                <p class="text-3xl font-extrabold mt-2">{{ totals.count }}</p>
+                <p class="text-xs opacity-70 mt-1">depuis {{ totals.since }}</p>
+              </div>
+            </div>
+          </div>
+        }
+
         <!-- Records personnels -->
         @if (records().length > 0) {
           <div class="mt-8">
@@ -51,6 +78,7 @@ const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep'
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               @for (rec of records(); track rec.label) {
                 <a [routerLink]="['/activities', rec.activityId]" [queryParams]="{ from: 'progression' }"
+                   [title]="rec.tooltip ?? ''"
                    class="group bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 p-5 hover:shadow-md hover:border-strava/30 transition-all duration-300">
                   <div class="flex items-start gap-4">
                     <span class="text-2xl">{{ rec.icon }}</span>
@@ -124,6 +152,26 @@ export class Progression {
     return months;
   });
 
+  /** Totaux carrière */
+  protected readonly careerTotals = computed(() => {
+    const all = this.strava.activities();
+    if (all.length === 0) return null;
+
+    const totalDist = all.reduce((s, a) => s + a.distance, 0);
+    const totalElev = all.reduce((s, a) => s + a.total_elevation_gain, 0);
+    const totalTime = all.reduce((s, a) => s + a.moving_time, 0);
+    const oldest = all[all.length - 1];
+    const since = new Date(oldest.start_date).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+    return {
+      distanceKm: Math.round(totalDist / 1000).toLocaleString('fr-FR'),
+      elevation: Math.round(totalElev).toLocaleString('fr-FR'),
+      duration: secondsToHoursMin(totalTime),
+      count: all.length,
+      since
+    };
+  });
+
   /** Records personnels (all-time) */
   protected readonly records = computed((): PersonalRecord[] => {
     const all = this.strava.activities();
@@ -142,7 +190,8 @@ export class Progression {
         activityName: best.name,
         activityId: best.id,
         date: fmt(best.start_date),
-        icon: '🏃'
+        icon: '🏃',
+        tooltip: 'Course ou trail avec la plus grande distance parcourue'
       });
 
       // Meilleur 5 km (estimé)
@@ -156,7 +205,8 @@ export class Progression {
           activityName: best5k.name,
           activityId: best5k.id,
           date: fmt(best5k.start_date),
-          icon: '⚡'
+          icon: '⚡',
+          tooltip: 'Meilleure allure moyenne sur une course de 5 km ou plus (estimation basée sur la vitesse moyenne)'
         });
       }
 
@@ -171,7 +221,24 @@ export class Progression {
           activityName: best10k.name,
           activityId: best10k.id,
           date: fmt(best10k.start_date),
-          icon: '🔥'
+          icon: '🔥',
+          tooltip: 'Meilleure allure moyenne sur une course de 10 km ou plus (estimation basée sur la vitesse moyenne)'
+        });
+      }
+
+      // Meilleur semi-marathon (estimé)
+      const runsSemi = runs.filter(a => a.distance >= 21097);
+      if (runsSemi.length > 0) {
+        const bestSemi = runsSemi.reduce((prev, curr) => curr.average_speed > prev.average_speed ? curr : prev);
+        const pace = Math.round(1000 / bestSemi.average_speed);
+        records.push({
+          label: 'Meilleur semi (estimé)',
+          value: `${Math.floor(pace / 60)}:${(pace % 60).toString().padStart(2, '0')} /km`,
+          activityName: bestSemi.name,
+          activityId: bestSemi.id,
+          date: fmt(bestSemi.start_date),
+          icon: '🏅',
+          tooltip: 'Meilleure allure moyenne sur une course de 21.1 km ou plus (estimation basée sur la vitesse moyenne)'
         });
       }
     }
@@ -186,8 +253,23 @@ export class Progression {
         activityName: best.name,
         activityId: best.id,
         date: fmt(best.start_date),
-        icon: '🚴'
+        icon: '🚴',
+        tooltip: 'Sortie vélo (route ou virtuel) avec la plus grande distance'
       });
+
+      // Vitesse max vélo
+      const fastestRide = rides.reduce((prev, curr) => curr.max_speed > prev.max_speed ? curr : prev);
+      if (fastestRide.max_speed > 0) {
+        records.push({
+          label: 'Vitesse max vélo',
+          value: `${(fastestRide.max_speed * 3.6).toFixed(1)} km/h`,
+          activityName: fastestRide.name,
+          activityId: fastestRide.id,
+          date: fmt(fastestRide.start_date),
+          icon: '💨',
+          tooltip: 'Vitesse maximale instantanée atteinte lors d\'une sortie vélo'
+        });
+      }
     }
 
     // Plus gros dénivelé
@@ -199,7 +281,8 @@ export class Progression {
         activityName: bestElev.name,
         activityId: bestElev.id,
         date: fmt(bestElev.start_date),
-        icon: '⛰️'
+        icon: '⛰️',
+        tooltip: 'Activité avec le plus grand dénivelé positif cumulé (tous types confondus)'
       });
     }
 
@@ -213,8 +296,98 @@ export class Progression {
       activityName: bestDur.name,
       activityId: bestDur.id,
       date: fmt(bestDur.start_date),
-      icon: '⏱️'
+      icon: '⏱️',
+      tooltip: 'Activité avec le plus long temps en mouvement (tous types confondus)'
     });
+
+    // FC max atteinte
+    const withHr = all.filter(a => a.max_heartrate && a.max_heartrate > 0);
+    if (withHr.length > 0) {
+      const bestHr = withHr.reduce((prev, curr) => (curr.max_heartrate ?? 0) > (prev.max_heartrate ?? 0) ? curr : prev);
+      records.push({
+        label: 'FC max atteinte',
+        value: `${bestHr.max_heartrate} bpm`,
+        activityName: bestHr.name,
+        activityId: bestHr.id,
+        date: fmt(bestHr.start_date),
+        icon: '❤️',
+        tooltip: 'Fréquence cardiaque maximale enregistrée sur une activité (nécessite un capteur cardio)'
+      });
+    }
+
+    // Plus gros volume hebdo
+    const weekMap = new Map<string, { dist: number; act: typeof all[0] }>();
+    for (const act of all) {
+      const d = new Date(act.start_date);
+      const day = d.getDay();
+      const monday = new Date(d);
+      monday.setDate(monday.getDate() - (day === 0 ? 6 : day - 1));
+      const key = `${monday.getFullYear()}-${(monday.getMonth() + 1).toString().padStart(2, '0')}-${monday.getDate().toString().padStart(2, '0')}`;
+      const curr = weekMap.get(key);
+      const newDist = (curr?.dist ?? 0) + act.distance;
+      weekMap.set(key, { dist: newDist, act: curr && curr.dist >= newDist ? curr.act : act });
+    }
+    let bestWeekKey = '';
+    let bestWeekDist = 0;
+    for (const [key, val] of weekMap) {
+      if (val.dist > bestWeekDist) { bestWeekDist = val.dist; bestWeekKey = key; }
+    }
+    if (bestWeekDist > 0) {
+      const bw = weekMap.get(bestWeekKey)!;
+      const mondayDate = new Date(bestWeekKey);
+      const sundayDate = new Date(mondayDate);
+      sundayDate.setDate(sundayDate.getDate() + 6);
+      const fmtShort = (d: Date) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+      records.push({
+        label: 'Meilleur volume hebdo',
+        value: `${(bestWeekDist / 1000).toFixed(1)} km`,
+        activityName: `Semaine du ${fmtShort(mondayDate)}`,
+        activityId: bw.act.id,
+        date: `${fmtShort(mondayDate)} - ${fmtShort(sundayDate)}`,
+        icon: '📊',
+        tooltip: 'Semaine (lundi-dimanche) avec le plus de kilomètres cumulés toutes activités confondues'
+      });
+    }
+
+    // Streak le plus long (jours consécutifs)
+    const dateSet = new Set<string>();
+    for (const act of all) {
+      const d = new Date(act.start_date);
+      dateSet.add(`${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`);
+    }
+    const sortedDates = [...dateSet].sort();
+    let maxStreak = 1, currentStreak = 1, streakEndIdx = 0;
+    for (let i = 1; i < sortedDates.length; i++) {
+      const prev = new Date(sortedDates[i - 1]);
+      const curr = new Date(sortedDates[i]);
+      const diffDays = Math.round((curr.getTime() - prev.getTime()) / 86400000);
+      if (diffDays === 1) {
+        currentStreak++;
+        if (currentStreak > maxStreak) {
+          maxStreak = currentStreak;
+          streakEndIdx = i;
+        }
+      } else {
+        currentStreak = 1;
+      }
+    }
+    if (maxStreak >= 2) {
+      const streakEnd = sortedDates[streakEndIdx];
+      const streakStart = sortedDates[streakEndIdx - maxStreak + 1];
+      const startAct = all.find(a => {
+        const d = new Date(a.start_date);
+        return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}` === streakStart;
+      });
+      records.push({
+        label: 'Plus long streak',
+        value: `${maxStreak} jours`,
+        activityName: `${new Date(streakStart).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} - ${new Date(streakEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`,
+        activityId: startAct?.id ?? all[0].id,
+        date: `${maxStreak} jours consécutifs`,
+        icon: '🔥',
+        tooltip: 'Plus grand nombre de jours consécutifs avec au moins une activité enregistrée'
+      });
+    }
 
     return records;
   });

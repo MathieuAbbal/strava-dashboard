@@ -79,10 +79,10 @@ import { StravaService } from '../../../core/services/strava.service';
                     }
                   </div>
                   <div class="p-4 space-y-2.5 text-sm text-slate-600">
-                    @if (athlete.weight) {
+                    @if (athlete.state || athlete.country) {
                       <div class="flex justify-between">
-                        <span class="text-slate-400">Poids</span>
-                        <span class="font-semibold text-slate-700">{{ athlete.weight }} kg</span>
+                        <span class="text-slate-400">Localisation</span>
+                        <span class="font-semibold text-slate-700">{{ athlete.state }}{{ athlete.state && athlete.country ? ', ' : '' }}{{ athlete.country }}</span>
                       </div>
                     }
                     <div class="flex justify-between">

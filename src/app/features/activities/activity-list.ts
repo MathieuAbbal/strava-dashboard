@@ -7,6 +7,8 @@ import { ActivitySummary } from '../../core/models/strava.models';
 import {
   metersToKm,
   secondsToHoursMin,
+  speedToPace,
+  speedToKmh,
   formatDateFr,
   activityIcon,
   activityColor
@@ -75,7 +77,14 @@ import {
 
       <!-- Liste des activités -->
       <div class="space-y-3">
-        @for (activity of filteredActivities(); track activity.id) {
+        @for (activity of filteredActivities(); track activity.id; let i = $index) {
+          @if (isNewMonth(activity, i)) {
+            <div class="flex items-center gap-3 pt-4 first:pt-0">
+              <div class="h-px flex-1 bg-slate-200/80"></div>
+              <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">{{ getMonthLabel(activity.start_date) }}</span>
+              <div class="h-px flex-1 bg-slate-200/80"></div>
+            </div>
+          }
           <a [routerLink]="['/activities', activity.id]"
              class="group block bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 hover:shadow-lg hover:border-slate-300/80 transition-all duration-300 p-5 relative overflow-hidden">
             <!-- Bande de couleur à gauche -->
@@ -99,7 +108,7 @@ import {
               </div>
 
               <!-- Statistiques -->
-              <div class="flex gap-8 text-sm">
+              <div class="flex gap-6 text-sm">
                 <div class="text-center">
                   <p class="font-bold text-slate-700 text-base">{{ formatDistance(activity.distance) }}</p>
                   <p class="text-xs text-slate-400 font-medium">km</p>
@@ -112,6 +121,22 @@ import {
                   <p class="font-bold text-slate-700 text-base">{{ activity.total_elevation_gain | number:'1.0-0' }} m</p>
                   <p class="text-xs text-slate-400 font-medium">D+</p>
                 </div>
+                <div class="text-center">
+                  <p class="font-bold text-slate-700 text-base">{{ formatSpeed(activity) }}</p>
+                  <p class="text-xs text-slate-400 font-medium">{{ isRunType(activity.type) ? 'allure' : 'vitesse' }}</p>
+                </div>
+                @if (activity.average_heartrate) {
+                  <div class="text-center">
+                    <p class="font-bold text-red-500 text-base">{{ activity.average_heartrate | number:'1.0-0' }}</p>
+                    <p class="text-xs text-slate-400 font-medium">bpm</p>
+                  </div>
+                }
+                @if (activity.average_watts) {
+                  <div class="text-center">
+                    <p class="font-bold text-amber-500 text-base">{{ activity.average_watts | number:'1.0-0' }}</p>
+                    <p class="text-xs text-slate-400 font-medium">watts</p>
+                  </div>
+                }
               </div>
             </div>
           </a>
@@ -185,4 +210,21 @@ export class ActivityList {
   protected formatDate(iso: string): string { return formatDateFr(iso); }
   protected getIcon(type: string): string { return activityIcon(type); }
   protected getColor(type: string): string { return activityColor(type); }
+  protected isRunType(type: string): boolean { return ['Run', 'TrailRun', 'Walk', 'Hike'].includes(type); }
+  protected formatSpeed(activity: ActivitySummary): string {
+    return this.isRunType(activity.type) ? speedToPace(activity.average_speed) : speedToKmh(activity.average_speed) + ' km/h';
+  }
+
+  protected isNewMonth(activity: ActivitySummary, index: number): boolean {
+    if (index === 0) return true;
+    const prev = this.filteredActivities()[index - 1];
+    const cur = new Date(activity.start_date);
+    const pre = new Date(prev.start_date);
+    return cur.getMonth() !== pre.getMonth() || cur.getFullYear() !== pre.getFullYear();
+  }
+
+  protected getMonthLabel(isoDate: string): string {
+    return new Date(isoDate).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  }
+
 }

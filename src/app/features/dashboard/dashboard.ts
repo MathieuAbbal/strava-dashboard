@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { StravaService } from '../../core/services/strava.service';
 import { ActivitySummary } from '../../core/models/strava.models';
-import { activityColor, activityTypeFr, secondsToHoursMin } from '../../core/utils/format';
+import { activityColor, activityTypeFr, metersToKm, secondsToHoursMin } from '../../core/utils/format';
 import { Chart, registerables } from 'chart.js';
 
 Chart.register(...registerables);
@@ -155,6 +155,61 @@ const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep'
                 </div>
               }
             </div>
+          </div>
+        }
+
+        <!-- Résumé hebdomadaire -->
+        @if (weeklyStats().length > 0) {
+          <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 p-6 mb-6 overflow-auto">
+            <h2 class="text-base font-semibold text-slate-700 mb-4">Résumé hebdomadaire</h2>
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-slate-200">
+                  <th class="text-left py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Semaine</th>
+                  <th class="text-center py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">L</th>
+                  <th class="text-center py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">M</th>
+                  <th class="text-center py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">M</th>
+                  <th class="text-center py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">J</th>
+                  <th class="text-center py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">V</th>
+                  <th class="text-center py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">S</th>
+                  <th class="text-center py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">D</th>
+                  <th class="text-right py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Dist.</th>
+                  <th class="text-right py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Durée</th>
+                  <th class="text-right py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">D+</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (week of weeklyStats(); track week.label) {
+                  <tr class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
+                      [class]="week.isCurrent ? 'bg-strava/5' : ''">
+                    <td class="py-3 px-2 font-semibold text-slate-700 whitespace-nowrap">
+                      {{ week.label }}
+                      @if (week.isCurrent) {
+                        <span class="text-[10px] font-medium text-strava ml-1">en cours</span>
+                      }
+                    </td>
+                    @for (day of week.days; track $index) {
+                      <td class="py-3 px-1 text-center">
+                        @if (day.hasActivity) {
+                          <div class="mx-auto rounded-full transition-all"
+                               [style.width.px]="12 + day.pct * 0.16"
+                               [style.height.px]="12 + day.pct * 0.16"
+                               [style.background-color]="day.color"
+                               [style.opacity]="0.6 + day.pct * 0.004"
+                               [title]="day.tooltip">
+                          </div>
+                        } @else {
+                          <div class="mx-auto w-2 h-2 rounded-full bg-slate-200" [title]="day.tooltip"></div>
+                        }
+                      </td>
+                    }
+                    <td class="py-3 px-2 text-right font-semibold text-slate-700">{{ week.distanceKm }} km</td>
+                    <td class="py-3 px-2 text-right text-slate-600">{{ week.duration }}</td>
+                    <td class="py-3 px-2 text-right text-slate-600">{{ week.elevation }} m</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
           </div>
         }
 
@@ -435,13 +490,127 @@ export class Dashboard {
     return this.computeTypeDistribution(this.filtered());
   });
 
+  /** Résumé hebdomadaire : dernières semaines avec stats et mini-barres par jour */
+  protected readonly weeklyStats = computed(() => {
+    const activities = this.filtered();
+    if (activities.length === 0) return [];
+
+    const period = this.selectedPeriod();
+    const range = this.periodRange();
+
+    // Calculer le nombre de semaines à couvrir selon la période
+    let numWeeks: number;
+    if (period === 'week') {
+      numWeeks = 1;
+    } else if (period === 'month') {
+      numWeeks = 5;
+    } else if (period === 'year') {
+      // Couvrir toute l'année (~53 semaines)
+      numWeeks = 53;
+    } else {
+      // "all" : de l'activité la plus ancienne à aujourd'hui
+      const oldest = activities[activities.length - 1];
+      const oldestDate = new Date(oldest.start_date);
+      const diffMs = Date.now() - oldestDate.getTime();
+      numWeeks = Math.ceil(diffMs / (7 * 86400000)) + 1;
+    }
+
+    // Trouver le lundi de la semaine courante (ou de la fin de la période)
+    const refDate = range.end && range.end < new Date() ? range.end : new Date();
+    const refDay = refDate.getDay();
+    const monday = new Date(refDate);
+    monday.setDate(monday.getDate() - (refDay === 0 ? 6 : refDay - 1));
+    monday.setHours(0, 0, 0, 0);
+
+    const now = new Date();
+    const todayStr = this.toLocalDateStr(now);
+
+    // Indexer les activités par date (YYYY-MM-DD) en date locale
+    const byDate = new Map<string, ActivitySummary[]>();
+    for (const act of activities) {
+      const d = new Date(act.start_date);
+      const key = this.toLocalDateStr(d);
+      if (!byDate.has(key)) byDate.set(key, []);
+      byDate.get(key)!.push(act);
+    }
+
+    // Max distance en un jour (pour les barres proportionnelles)
+    let maxDayDist = 0;
+    for (const acts of byDate.values()) {
+      const dist = acts.reduce((s, a) => s + a.distance, 0);
+      if (dist > maxDayDist) maxDayDist = dist;
+    }
+
+    const weeks: {
+      label: string;
+      count: number;
+      distanceKm: string;
+      duration: string;
+      elevation: number;
+      isCurrent: boolean;
+      days: { pct: number; hasActivity: boolean; color: string; tooltip: string }[];
+    }[] = [];
+
+    for (let w = 0; w < numWeeks; w++) {
+      const weekStart = new Date(monday);
+      weekStart.setDate(weekStart.getDate() - w * 7);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+
+      const fmt = (d: Date) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+      const label = `${fmt(weekStart)} - ${fmt(weekEnd)}`;
+      const isCurrent = todayStr >= this.toLocalDateStr(weekStart) && todayStr <= this.toLocalDateStr(weekEnd);
+
+      let count = 0, dist = 0, elev = 0, time = 0;
+      const days: { pct: number; hasActivity: boolean; color: string; tooltip: string }[] = [];
+
+      for (let d = 0; d < 7; d++) {
+        const day = new Date(weekStart);
+        day.setDate(day.getDate() + d);
+        const key = this.toLocalDateStr(day);
+        const dayActs = byDate.get(key) ?? [];
+        const dayDist = dayActs.reduce((s, a) => s + a.distance, 0);
+        const dayElev = dayActs.reduce((s, a) => s + a.total_elevation_gain, 0);
+        const dayTime = dayActs.reduce((s, a) => s + a.moving_time, 0);
+
+        count += dayActs.length;
+        dist += dayDist;
+        elev += dayElev;
+        time += dayTime;
+
+        const pct = maxDayDist > 0 ? Math.round(dayDist / maxDayDist * 100) : 0;
+        const color = dayActs.length > 0 ? activityColor(dayActs[0].type) : '#e2e8f0';
+        const dayLabel = day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' });
+        const tooltip = dayActs.length > 0
+          ? dayActs.map(a => `${a.name} — ${metersToKm(a.distance)} km, ${secondsToHoursMin(a.moving_time)}`).join('\n') + `\n${dayLabel}`
+          : dayLabel;
+
+        days.push({ pct, hasActivity: dayActs.length > 0, color, tooltip });
+      }
+
+      if (count > 0 || isCurrent) {
+        weeks.push({
+          label,
+          count,
+          distanceKm: metersToKm(dist),
+          duration: secondsToHoursMin(time),
+          elevation: Math.round(elev),
+          isCurrent,
+          days
+        });
+      }
+    }
+
+    return weeks;
+  });
+
   constructor() {
     afterNextRender(() => {
       this.strava.loadAllActivities();
     });
 
     // Mise à jour des 4 graphiques quand les données ou la période changent
-    effect(() => { this.renderBar(this.barCanvas(), this.barData(), 'bar', '#f97316', 'km'); });
+    effect(() => { this.renderBar(this.barCanvas(), this.barData(), 'bar', '#3b82f6', 'km'); });
     effect(() => { this.renderBar(this.elevCanvas(), this.elevData(), 'elev', '#22c55e', 'm'); });
     effect(() => {
       const p = this.selectedPeriod();
@@ -667,5 +836,10 @@ export class Dashboard {
         }
       }
     });
+  }
+
+  /** Formater une date en YYYY-MM-DD en heure locale (évite le décalage UTC de toISOString) */
+  private toLocalDateStr(d: Date): string {
+    return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
   }
 }
