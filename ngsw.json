@@ -1,0 +1,99 @@
+{
+  "configVersion": 1,
+  "timestamp": 1771750079055,
+  "index": "/strava-dashboard/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/strava-dashboard/chunk-27D2G7FL.js",
+        "/strava-dashboard/chunk-27FMTZC4.js",
+        "/strava-dashboard/chunk-7J3U6LFP.js",
+        "/strava-dashboard/chunk-KISZEE3Z.js",
+        "/strava-dashboard/chunk-KSVBKDBG.js",
+        "/strava-dashboard/chunk-LJNUYIIX.js",
+        "/strava-dashboard/chunk-MDKPIH2N.js",
+        "/strava-dashboard/chunk-NWTJMNIO.js",
+        "/strava-dashboard/chunk-XKWS4DS7.js",
+        "/strava-dashboard/chunk-XYDX6LLM.js",
+        "/strava-dashboard/chunk-Z5GY43WJ.js",
+        "/strava-dashboard/favicon.ico",
+        "/strava-dashboard/index.html",
+        "/strava-dashboard/main-AHZJ3DAU.js",
+        "/strava-dashboard/manifest.webmanifest",
+        "/strava-dashboard/styles-HJPO7HUN.css"
+      ],
+      "patterns": []
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/strava-dashboard/icons/icon-128x128.png",
+        "/strava-dashboard/icons/icon-144x144.png",
+        "/strava-dashboard/icons/icon-152x152.png",
+        "/strava-dashboard/icons/icon-192x192.png",
+        "/strava-dashboard/icons/icon-384x384.png",
+        "/strava-dashboard/icons/icon-512x512.png",
+        "/strava-dashboard/icons/icon-72x72.png",
+        "/strava-dashboard/icons/icon-96x96.png"
+      ],
+      "patterns": []
+    }
+  ],
+  "dataGroups": [],
+  "hashTable": {
+    "/strava-dashboard/chunk-27D2G7FL.js": "f1bf930d3698d333750010a1994f38d0cd9ca600",
+    "/strava-dashboard/chunk-27FMTZC4.js": "69f4bc011f9119045cd2d2e839bf9499f43876c0",
+    "/strava-dashboard/chunk-7J3U6LFP.js": "8c4934dfd29d52a96fdec10edfe0ceb4739825c7",
+    "/strava-dashboard/chunk-KISZEE3Z.js": "cf5b8cb119aa3c9e7f1fccc999ac499acaea6beb",
+    "/strava-dashboard/chunk-KSVBKDBG.js": "73fe7921f8f7348c8fe0e634e6115a708815acdf",
+    "/strava-dashboard/chunk-LJNUYIIX.js": "58976524780c96f54587186e424fc2dab8e84300",
+    "/strava-dashboard/chunk-MDKPIH2N.js": "f283adbb107014e54cc099a44e398ef03fbd846c",
+    "/strava-dashboard/chunk-NWTJMNIO.js": "b15384a8503ffa5ce75198ffeaf8a2127b717a23",
+    "/strava-dashboard/chunk-XKWS4DS7.js": "35582875fef837fa947f4ee4226a5a7f1264b7f1",
+    "/strava-dashboard/chunk-XYDX6LLM.js": "697e4b28548b80521ad953f43d1966b0df6a5172",
+    "/strava-dashboard/chunk-Z5GY43WJ.js": "6b65879573740d01cff17a6c79d63667af11a51a",
+    "/strava-dashboard/favicon.ico": "9c39f434fe1261f68c5e3eefdf734630d99c5670",
+    "/strava-dashboard/icons/icon-128x128.png": "f912963bdc6d5a38d8f1dd0afbaab2ce8d657acb",
+    "/strava-dashboard/icons/icon-144x144.png": "b155fd5f2fd5d2ea7760721063003c4cd95fd783",
+    "/strava-dashboard/icons/icon-152x152.png": "eae6e0f0c8afb8aaae339e2a569b43e9238e5e6c",
+    "/strava-dashboard/icons/icon-192x192.png": "15c4180454633880d98674aa7394656196c91584",
+    "/strava-dashboard/icons/icon-384x384.png": "94a915751ef6c9282df9aea405ad679230631814",
+    "/strava-dashboard/icons/icon-512x512.png": "1de182f76f7329dfa8f9fcdd1fdcdd695bea6a99",
+    "/strava-dashboard/icons/icon-72x72.png": "aa88a6096bd973be7f6d7a5489bfa6bc2463f8c4",
+    "/strava-dashboard/icons/icon-96x96.png": "7fb8f59c30ce2ff12c700321a0b39e14b3dc8f95",
+    "/strava-dashboard/index.html": "06e11d1b14f660f7914d9be2d7a6a17aa096a9ab",
+    "/strava-dashboard/main-AHZJ3DAU.js": "cfbbf01300e446a9f4560618dfffbdcca2712494",
+    "/strava-dashboard/manifest.webmanifest": "bffeced3c95b995a9b9066203cf991f58b0339bf",
+    "/strava-dashboard/styles-HJPO7HUN.css": "ce787faf997024f465c37bed64083949d903353e"
+  },
+  "navigationUrls": [
+    {
+      "positive": true,
+      "regex": "^\\/.*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*\\.[^/]*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*__[^/]*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*__[^/]*\\/.*$"
+    }
+  ],
+  "navigationRequestStrategy": "performance"
+}
