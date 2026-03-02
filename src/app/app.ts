@@ -1,5 +1,6 @@
-import { Component, inject, afterNextRender } from '@angular/core';
+import { Component, inject, afterNextRender, signal } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
+import { SwUpdate } from '@angular/service-worker';
 import { Navbar } from './shared/components/navbar/navbar';
 import { StravaService } from './core/services/strava.service';
 
@@ -19,16 +20,39 @@ import { StravaService } from './core/services/strava.service';
       <main class="animate-fade-in">
         <router-outlet />
       </main>
+
+      <!-- Bandeau mise à jour PWA -->
+      @if (updateAvailable()) {
+        <div class="fixed bottom-0 left-0 right-0 bg-strava text-white text-center py-3 px-4 text-sm font-medium shadow-lg z-50 animate-fade-in">
+          Nouvelle version disponible — mise à jour en cours...
+        </div>
+      }
     </div>
   `
 })
 export class App {
   protected readonly strava = inject(StravaService);
   private readonly router = inject(Router);
+  private readonly swUpdate = inject(SwUpdate);
+  protected readonly updateAvailable = signal(false);
 
   constructor() {
     afterNextRender(() => {
       this.handleOAuthCallback();
+      this.checkForUpdates();
+    });
+  }
+
+  private checkForUpdates(): void {
+    if (!this.swUpdate.isEnabled) return;
+
+    this.swUpdate.versionUpdates.subscribe(event => {
+      if (event.type === 'VERSION_READY') {
+        this.updateAvailable.set(true);
+        setTimeout(() => {
+          document.location.reload();
+        }, 2000);
+      }
     });
   }
 

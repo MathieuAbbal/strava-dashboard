@@ -198,14 +198,25 @@ export class Progression {
         tooltip: 'Course ou trail avec la plus grande distance parcourue'
       });
 
-      // Meilleur 5 km (estimé)
+      // Records de vitesse par distance (on n'affiche pas si même activité que le palier supérieur)
       const runs5k = runs.filter(a => a.distance >= 5000);
-      if (runs5k.length > 0) {
-        const best5k = runs5k.reduce((prev, curr) => curr.average_speed > prev.average_speed ? curr : prev);
-        const pace = Math.round(1000 / best5k.average_speed);
+      const runs10k = runs.filter(a => a.distance >= 10000);
+      const runsSemi = runs.filter(a => a.distance >= 21097);
+
+      const best5k = runs5k.length > 0 ? runs5k.reduce((prev, curr) => curr.average_speed > prev.average_speed ? curr : prev) : null;
+      const best10k = runs10k.length > 0 ? runs10k.reduce((prev, curr) => curr.average_speed > prev.average_speed ? curr : prev) : null;
+      const bestSemi = runsSemi.length > 0 ? runsSemi.reduce((prev, curr) => curr.average_speed > prev.average_speed ? curr : prev) : null;
+
+      const fmtPace = (speed: number) => {
+        const pace = Math.round(1000 / speed);
+        return `${Math.floor(pace / 60)}:${(pace % 60).toString().padStart(2, '0')} /km`;
+      };
+
+      // Meilleur 5 km : afficher seulement si différent du 10 km
+      if (best5k && (!best10k || best5k.id !== best10k.id)) {
         records.push({
           label: 'Meilleur 5 km (estimé)',
-          value: `${Math.floor(pace / 60)}:${(pace % 60).toString().padStart(2, '0')} /km`,
+          value: fmtPace(best5k.average_speed),
           activityName: best5k.name,
           activityId: best5k.id,
           date: fmt(best5k.start_date),
@@ -214,14 +225,11 @@ export class Progression {
         });
       }
 
-      // Meilleur 10 km (estimé)
-      const runs10k = runs.filter(a => a.distance >= 10000);
-      if (runs10k.length > 0) {
-        const best10k = runs10k.reduce((prev, curr) => curr.average_speed > prev.average_speed ? curr : prev);
-        const pace = Math.round(1000 / best10k.average_speed);
+      // Meilleur 10 km : afficher seulement si différent du semi
+      if (best10k && (!bestSemi || best10k.id !== bestSemi.id)) {
         records.push({
           label: 'Meilleur 10 km (estimé)',
-          value: `${Math.floor(pace / 60)}:${(pace % 60).toString().padStart(2, '0')} /km`,
+          value: fmtPace(best10k.average_speed),
           activityName: best10k.name,
           activityId: best10k.id,
           date: fmt(best10k.start_date),
@@ -230,14 +238,11 @@ export class Progression {
         });
       }
 
-      // Meilleur semi-marathon (estimé)
-      const runsSemi = runs.filter(a => a.distance >= 21097);
-      if (runsSemi.length > 0) {
-        const bestSemi = runsSemi.reduce((prev, curr) => curr.average_speed > prev.average_speed ? curr : prev);
-        const pace = Math.round(1000 / bestSemi.average_speed);
+      // Meilleur semi-marathon : toujours affiché si disponible
+      if (bestSemi) {
         records.push({
           label: 'Meilleur semi (estimé)',
-          value: `${Math.floor(pace / 60)}:${(pace % 60).toString().padStart(2, '0')} /km`,
+          value: fmtPace(bestSemi.average_speed),
           activityName: bestSemi.name,
           activityId: bestSemi.id,
           date: fmt(bestSemi.start_date),

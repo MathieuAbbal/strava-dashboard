@@ -179,7 +179,18 @@ const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep'
                 </tr>
               </thead>
               <tbody>
-                @for (week of weeklyStats(); track week.label) {
+                @for (week of weeklyStats(); track week.label; let i = $index) {
+                  @if ((selectedPeriod() === 'year' || selectedPeriod() === 'all') && (i === 0 || week.monthLabel !== weeklyStats()[i - 1].monthLabel)) {
+                    <tr>
+                      <td colspan="11" class="pt-4 pb-2 px-2">
+                        <div class="flex items-center gap-3">
+                          <div class="h-px flex-1 bg-slate-200/80"></div>
+                          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">{{ week.monthLabel }}</span>
+                          <div class="h-px flex-1 bg-slate-200/80"></div>
+                        </div>
+                      </td>
+                    </tr>
+                  }
                   <tr class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
                       [class]="week.isCurrent ? 'bg-strava/5' : ''">
                     <td class="py-3 px-2 font-semibold text-slate-700 whitespace-nowrap">
@@ -198,7 +209,7 @@ const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep'
                                [style.opacity]="0.6 + day.pct * 0.004"
                                [title]="day.tooltip">
                           </div>
-                        } @else {
+                        } @else if (day.inRange) {
                           <div class="mx-auto w-2 h-2 rounded-full bg-slate-200" [title]="day.tooltip"></div>
                         }
                       </td>
@@ -543,13 +554,18 @@ export class Dashboard {
 
     const weeks: {
       label: string;
+      monthLabel: string;
       count: number;
       distanceKm: string;
       duration: string;
       elevation: number;
       isCurrent: boolean;
-      days: { pct: number; hasActivity: boolean; color: string; tooltip: string }[];
+      days: { pct: number; hasActivity: boolean; inRange: boolean; color: string; tooltip: string }[];
     }[] = [];
+
+    // Bornes de la période pour filtrer les jours hors plage
+    const rangeStart = range.start;
+    const rangeEnd = range.end;
 
     for (let w = 0; w < numWeeks; w++) {
       const weekStart = new Date(monday);
@@ -562,7 +578,7 @@ export class Dashboard {
       const isCurrent = todayStr >= this.toLocalDateStr(weekStart) && todayStr <= this.toLocalDateStr(weekEnd);
 
       let count = 0, dist = 0, elev = 0, time = 0;
-      const days: { pct: number; hasActivity: boolean; color: string; tooltip: string }[] = [];
+      const days: { pct: number; hasActivity: boolean; inRange: boolean; color: string; tooltip: string }[] = [];
 
       for (let d = 0; d < 7; d++) {
         const day = new Date(weekStart);
@@ -578,6 +594,9 @@ export class Dashboard {
         elev += dayElev;
         time += dayTime;
 
+        // Le jour est dans la plage si entre start/end et pas dans le futur
+        const inRange = (!rangeStart || day >= rangeStart) && (!rangeEnd || day <= rangeEnd) && day <= now;
+
         const pct = maxDayDist > 0 ? Math.round(dayDist / maxDayDist * 100) : 0;
         const color = dayActs.length > 0 ? activityColor(dayActs[0].type) : '#e2e8f0';
         const dayLabel = day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' });
@@ -585,12 +604,20 @@ export class Dashboard {
           ? dayActs.map(a => `${a.name} — ${metersToKm(a.distance)} km, ${secondsToHoursMin(a.moving_time)}`).join('\n') + `\n${dayLabel}`
           : dayLabel;
 
-        days.push({ pct, hasActivity: dayActs.length > 0, color, tooltip });
+        days.push({ pct, hasActivity: dayActs.length > 0, inRange, color, tooltip });
       }
 
       if (count > 0 || isCurrent) {
+        // Le jeudi de la semaine détermine le regroupement (norme ISO 8601)
+        const thursday = new Date(weekStart);
+        thursday.setDate(thursday.getDate() + 3);
+        // Pour "tout" : séparateur par année, sinon par mois
+        const monthLabel = period === 'all'
+          ? `${thursday.getFullYear()}`
+          : thursday.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
         weeks.push({
           label,
+          monthLabel,
           count,
           distanceKm: metersToKm(dist),
           duration: secondsToHoursMin(time),

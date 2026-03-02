@@ -1,6 +1,6 @@
 {
-  "name": "Strava Dashboard",
-  "short_name": "Strava",
+  "name": "Mon Dashboard Sport",
+  "short_name": "Dashboard",
   "description": "Tableau de bord personnel pour analyser vos activités Strava",
   "display": "standalone",
   "background_color": "#f8fafc",
