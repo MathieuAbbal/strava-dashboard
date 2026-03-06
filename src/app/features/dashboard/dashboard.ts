@@ -564,7 +564,8 @@ export class Dashboard {
     }[] = [];
 
     // Bornes de la période pour filtrer les jours hors plage
-    const rangeStart = range.start;
+    // Pour "tout" : utiliser la date de la plus ancienne activité comme borne de début
+    const rangeStart = range.start ?? (activities.length > 0 ? new Date(new Date(activities[activities.length - 1].start_date).setHours(0, 0, 0, 0)) : null);
     const rangeEnd = range.end;
 
     for (let w = 0; w < numWeeks; w++) {

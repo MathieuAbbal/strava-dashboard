@@ -226,27 +226,39 @@ export class GlobalMap {
         data: { type: 'FeatureCollection', features }
       });
 
-      // Layer unique avec couleur data-driven et hover via feature-state
+      // Layer invisible plus large pour faciliter le clic/tap sur mobile
+      this.map!.addLayer({
+        id: 'activities-hitarea',
+        type: 'line',
+        source: 'activities',
+        paint: {
+          'line-color': 'transparent',
+          'line-width': 20
+        }
+      });
+
+      // Layer visible avec couleur data-driven et hover via feature-state
       this.map!.addLayer({
         id: 'activities-line',
         type: 'line',
         source: 'activities',
         paint: {
           'line-color': ['get', 'color'],
-          'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 5, 2.5],
-          'line-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 1, 0.2]
+          'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 5, 3],
+          'line-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 1, 0.25]
         }
       });
 
-      // Survol : popup + highlight
-      this.map!.on('mousemove', 'activities-line', (e) => {
+      // Handler commun pour le survol/tap
+      const interactionLayers = ['activities-hitarea', 'activities-line'];
+
+      const handleHover = (e: maplibregl.MapMouseEvent & { features?: maplibregl.GeoJSONFeature[] }) => {
         const feature = e.features?.[0];
         if (!feature) return;
 
         this.map!.getCanvas().style.cursor = 'pointer';
         const id = feature.id as number;
 
-        // Changer le feature-state uniquement si on change de feature
         if (this.hoveredId !== null && this.hoveredId !== id) {
           this.map!.setFeatureState({ source: 'activities', id: this.hoveredId }, { hover: false });
         }
@@ -268,24 +280,30 @@ export class GlobalMap {
           </div>
         `;
         this.popup.setLngLat(e.lngLat).setHTML(html).addTo(this.map!);
-      });
+      };
 
-      this.map!.on('mouseleave', 'activities-line', () => {
+      const handleLeave = () => {
         this.map!.getCanvas().style.cursor = '';
         if (this.hoveredId !== null) {
           this.map!.setFeatureState({ source: 'activities', id: this.hoveredId }, { hover: false });
           this.hoveredId = null;
         }
         this.popup.remove();
-      });
+      };
 
-      // Clic : naviguer vers le détail de l'activité
-      this.map!.on('click', 'activities-line', (e) => {
+      const handleClick = (e: maplibregl.MapMouseEvent & { features?: maplibregl.GeoJSONFeature[] }) => {
         const activityId = e.features?.[0]?.properties?.['activityId'];
         if (activityId) {
           this.router.navigate(['/activities', activityId], { queryParams: { from: 'map' } });
         }
-      });
+      };
+
+      // Attacher les événements sur les deux layers
+      for (const layer of interactionLayers) {
+        this.map!.on('mousemove', layer, handleHover);
+        this.map!.on('mouseleave', layer, handleLeave);
+        this.map!.on('click', layer, handleClick);
+      }
 
       // Ajuster la vue pour afficher tous les tracés
       this.map!.fitBounds(bounds, { padding: 50 });
