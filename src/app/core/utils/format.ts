@@ -51,6 +51,9 @@ export function activityColor(type: string): string {
     Workout: '#f59e0b',    // Ambre
     WeightTraining: '#a855f7', // Violet
     Yoga: '#ec4899',       // Rose
+    Snowboard: '#38bdf8',  // Bleu ciel
+    AlpineSki: '#7dd3fc',  // Bleu ciel clair
+    NordicSki: '#0ea5e9',  // Bleu
   };
   return colors[type] ?? '#6b7280'; // Gris par défaut
 }
@@ -68,6 +71,9 @@ export function activityTypeFr(type: string): string {
     Workout: 'Entraînement',
     WeightTraining: 'Musculation',
     Yoga: 'Yoga',
+    Snowboard: 'Snowboard',
+    AlpineSki: 'Ski alpin',
+    NordicSki: 'Ski nordique',
   };
   return labels[type] ?? type;
 }
@@ -85,6 +91,9 @@ export function activityIcon(type: string): string {
     Workout: '💪',
     WeightTraining: '🏋️',
     Yoga: '🧘',
+    Snowboard: '🏂',
+    AlpineSki: '⛷️',
+    NordicSki: '🎿',
   };
   return icons[type] ?? '🏅';
 }

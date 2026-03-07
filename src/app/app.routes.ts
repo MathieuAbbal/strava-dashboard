@@ -36,6 +36,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/progression/progression').then(m => m.Progression)
   },
   {
+    path: 'calendar',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/calendar/calendar').then(m => m.TrainingCalendar)
+  },
+  {
     path: 'map',
     canActivate: [authGuard],
     loadComponent: () => import('./features/maps/global-map').then(m => m.GlobalMap)

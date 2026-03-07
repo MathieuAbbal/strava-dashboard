@@ -136,13 +136,15 @@ En production, l'authentification se fait via OAuth : l'utilisateur clique "Se c
 - Navigation par periode (semaine, mois, annee, tout) avec fleches precedent/suivant
 - Comparaison vs periode precedente (% evolution)
 - Resume hebdomadaire : calendrier avec dots colores par activite et tooltips detailles
-- Graphiques : km par jour/mois, denivele, duree, repartition par type
+- Separateurs par mois (vue annee) ou par annee (vue tout)
+- Graphiques : km par jour/mois, denivele, duree (en heures), repartition par type
 
 ### Activites (`/activities`)
 - Liste des activites avec icone, distance, duree, denivele, allure/vitesse, FC, watts
 - Separateurs visuels par mois
 - Filtres par type d'activite et plage de dates
 - Compteur de resultats
+- Responsive mobile : masquage FC/D+/nom pour eviter le chevauchement
 
 ### Detail activite (`/activities/:id`)
 - Statistiques detaillees (allure, FC, calories, splits...)
@@ -150,29 +152,43 @@ En production, l'authentification se fait via OAuth : l'utilisateur clique "Se c
 - Graphique d'analyse : altitude en fond + overlays FC, vitesse/allure, cadence
   - Lissage par moyenne glissante
   - Bandes verticales par metrique
+- Zones de frequence cardiaque : graphique doughnut + cards par zone (Z1-Z5)
 - Best efforts avec badges PR (or, argent, bronze)
 - Segments traverses avec pente, categorie et classement
 - Tableau des splits/laps
 
 ### Progression (`/progression`)
 - Courbe de progression depuis les debuts : distance, nombre d'activites, allure moyenne
+- Graphique scrollable horizontalement sur mobile
 - Totaux carriere : distance totale, denivele, temps, nombre d'activites
-- Records personnels avec tooltips explicatifs :
+- Records personnels avec deduplication intelligente (5k/10k/semi sur meme activite)
   - Plus longue course, meilleur 5k/10k/semi (estime)
   - Plus longue sortie velo, vitesse max velo
   - Plus gros denivele, plus longue activite
   - FC max, meilleur volume hebdo, plus long streak
 
+### Calendrier (`/calendar`)
+- Vue calendrier mensuel (lundi-dimanche) des activites
+- Navigation par mois (precedent/suivant)
+- Dots colores par type d'activite avec tooltip au survol
+- Clic pour acceder au detail de l'activite
+- Totaux mensuels (activites, distance, duree, denivele)
+- Jour courant mis en evidence
+
 ### Carte globale (`/map`)
-- Toutes les activites superposees sur une carte avec effet heatmap
-- Filtres par type d'activite (Course, Velo, Rando, Natation...)
+- Toutes les activites superposees sur une carte
+- Mode Heatmap : fond sombre + traces orange avec opacite
+- Legende dynamique : seuls les types avec trace GPS sont affiches
+- Filtres par type d'activite (toggle on/off par clic)
 - Filtres par periode (Tout, 12 mois, 6 mois, 3 mois)
+- Zone de clic elargie (20px) pour faciliter le tap mobile
 - Popup au survol avec resume de l'activite
 - Clic pour acceder au detail
 
 ### Navbar
 - Navigation responsive : icones sur mobile, texte sur desktop
-- Profil athlete avec dropdown (photo, localisation)
+- Profil athlete avec dropdown (photo, stats globales, localisation)
+- Deconnexion
 
 ## Structure du projet
 
@@ -196,7 +212,8 @@ src/
 │   │   │   ├── activity-list.ts      # Liste filtrable avec separateurs mensuels
 │   │   │   └── activity-detail.ts    # Detail + carte + analyse + segments + best efforts
 │   │   ├── progression/progression.ts # Progression + totaux carriere + records
-│   │   └── maps/global-map.ts        # Carte globale heatmap
+│   │   ├── calendar/calendar.ts       # Calendrier mensuel d'entrainement
+│   │   └── maps/global-map.ts        # Carte globale + heatmap
 │   └── shared/components/
 │       └── navbar/navbar.ts          # Navigation + profil athlete
 ├── public/

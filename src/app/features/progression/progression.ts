@@ -417,6 +417,17 @@ export class Progression {
     const ptRadius = data.length > 24 ? 2 : 4;
     const ptHover = data.length > 24 ? 4 : 6;
 
+    // Fermer le tooltip au touch en dehors du canvas (mobile)
+    canvasRef.nativeElement.addEventListener('touchend', () => {
+      setTimeout(() => {
+        if (this.progressionChartInstance) {
+          this.progressionChartInstance.setActiveElements([]);
+          this.progressionChartInstance.tooltip?.setActiveElements([], { x: 0, y: 0 });
+          this.progressionChartInstance.update('none');
+        }
+      }, 2000);
+    });
+
     this.progressionChartInstance = new Chart(canvasRef.nativeElement, {
       type: 'line',
       data: {
@@ -460,10 +471,31 @@ export class Progression {
           }
         ]
       },
+      plugins: [{
+        id: 'crosshair',
+        afterDraw: (chart: any) => {
+          const tooltip = chart.tooltip;
+          if (!tooltip || !tooltip.opacity) return;
+          const ctx = chart.ctx;
+          const x = tooltip.caretX;
+          const topY = chart.scales.y.top;
+          const bottomY = chart.scales.y.bottom;
+          ctx.save();
+          ctx.beginPath();
+          ctx.setLineDash([4, 4]);
+          ctx.moveTo(x, topY);
+          ctx.lineTo(x, bottomY);
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = '#94a3b8';
+          ctx.stroke();
+          ctx.restore();
+        }
+      }],
       options: {
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
+        events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove', 'touchend'],
         plugins: {
           legend: {
             position: 'bottom',
@@ -489,6 +521,8 @@ export class Progression {
           },
           tooltip: {
             backgroundColor: '#1B1F3B',
+            titleColor: '#ffffff',
+            bodyColor: '#ffffff',
             titleFont: { weight: 'bold' },
             padding: 12,
             cornerRadius: 8,

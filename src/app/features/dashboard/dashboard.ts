@@ -202,12 +202,15 @@ const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep'
                     @for (day of week.days; track $index) {
                       <td class="py-3 px-1 text-center">
                         @if (day.hasActivity) {
-                          <div class="mx-auto rounded-full transition-all"
-                               [style.width.px]="12 + day.pct * 0.16"
-                               [style.height.px]="12 + day.pct * 0.16"
-                               [style.background-color]="day.color"
-                               [style.opacity]="0.6 + day.pct * 0.004"
-                               [title]="day.tooltip">
+                          <div class="mx-auto flex flex-col items-center gap-0.5" [title]="day.tooltip">
+                            @for (c of day.colors; track $index) {
+                              <div class="rounded-full transition-all"
+                                   [style.width.px]="day.colors.length > 1 ? 10 : 12 + day.pct * 0.16"
+                                   [style.height.px]="day.colors.length > 1 ? 10 : 12 + day.pct * 0.16"
+                                   [style.background-color]="c"
+                                   [style.opacity]="day.colors.length > 1 ? 0.85 : 0.6 + day.pct * 0.004">
+                              </div>
+                            }
                           </div>
                         } @else if (day.inRange) {
                           <div class="mx-auto w-2 h-2 rounded-full bg-slate-200" [title]="day.tooltip"></div>
@@ -476,8 +479,8 @@ export class Dashboard {
 
   protected readonly durationChartTitle = computed(() => {
     switch (this.selectedPeriod()) {
-      case 'week': return 'Durée par jour (min)';
-      case 'month': return 'Durée par jour (min)';
+      case 'week': return 'Durée par jour (h)';
+      case 'month': return 'Durée par jour (h)';
       case 'year': return 'Durée par mois (h)';
       case 'all': return 'Durée par année (h)';
     }
@@ -560,7 +563,7 @@ export class Dashboard {
       duration: string;
       elevation: number;
       isCurrent: boolean;
-      days: { pct: number; hasActivity: boolean; inRange: boolean; color: string; tooltip: string }[];
+      days: { pct: number; hasActivity: boolean; inRange: boolean; colors: string[]; tooltip: string }[];
     }[] = [];
 
     // Bornes de la période pour filtrer les jours hors plage
@@ -579,7 +582,7 @@ export class Dashboard {
       const isCurrent = todayStr >= this.toLocalDateStr(weekStart) && todayStr <= this.toLocalDateStr(weekEnd);
 
       let count = 0, dist = 0, elev = 0, time = 0;
-      const days: { pct: number; hasActivity: boolean; inRange: boolean; color: string; tooltip: string }[] = [];
+      const days: { pct: number; hasActivity: boolean; inRange: boolean; colors: string[]; tooltip: string }[] = [];
 
       for (let d = 0; d < 7; d++) {
         const day = new Date(weekStart);
@@ -599,13 +602,13 @@ export class Dashboard {
         const inRange = (!rangeStart || day >= rangeStart) && (!rangeEnd || day <= rangeEnd) && day <= now;
 
         const pct = maxDayDist > 0 ? Math.round(dayDist / maxDayDist * 100) : 0;
-        const color = dayActs.length > 0 ? activityColor(dayActs[0].type) : '#e2e8f0';
+        const colors = dayActs.map(a => activityColor(a.type));
         const dayLabel = day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' });
         const tooltip = dayActs.length > 0
           ? dayActs.map(a => `${a.name} — ${metersToKm(a.distance)} km, ${secondsToHoursMin(a.moving_time)}`).join('\n') + `\n${dayLabel}`
           : dayLabel;
 
-        days.push({ pct, hasActivity: dayActs.length > 0, inRange, color, tooltip });
+        days.push({ pct, hasActivity: dayActs.length > 0, inRange, colors, tooltip });
       }
 
       if (count > 0 || isCurrent) {
@@ -641,9 +644,7 @@ export class Dashboard {
     effect(() => { this.renderBar(this.barCanvas(), this.barData(), 'bar', '#3b82f6', 'km'); });
     effect(() => { this.renderBar(this.elevCanvas(), this.elevData(), 'elev', '#22c55e', 'm'); });
     effect(() => {
-      const p = this.selectedPeriod();
-      const unit = (p === 'week' || p === 'month') ? 'min' : 'h';
-      this.renderBar(this.durationCanvas(), this.durationData(), 'duration', '#8b5cf6', unit);
+      this.renderBar(this.durationCanvas(), this.durationData(), 'duration', '#8b5cf6', 'h');
     });
     effect(() => { this.renderTypeChart(this.typeCanvas(), this.typeData()); });
   }
@@ -725,7 +726,7 @@ export class Dashboard {
       } else if (metric === 'elevation') {
         value = act.total_elevation_gain;
       } else {
-        value = (period === 'week' || period === 'month') ? act.moving_time / 60 : act.moving_time / 3600;
+        value = act.moving_time / 3600;
       }
 
       buckets.set(key, (buckets.get(key) ?? 0) + value);

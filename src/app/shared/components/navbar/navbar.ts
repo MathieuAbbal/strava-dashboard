@@ -41,6 +41,12 @@ import { StravaService } from '../../../core/services/strava.service';
               <svg class="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
               <span class="hidden sm:inline">Progression</span>
             </a>
+            <a routerLink="/calendar"
+               routerLinkActive="!bg-strava !shadow-md"
+               class="px-2.5 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium hover:bg-white/10 transition-all duration-200 flex items-center gap-1.5">
+              <svg class="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke-width="2"/><path stroke-width="2" d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span class="hidden sm:inline">Calendrier</span>
+            </a>
             <a routerLink="/map"
                routerLinkActive="!bg-strava !shadow-md"
                class="px-2.5 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium hover:bg-white/10 transition-all duration-200 flex items-center gap-1.5">

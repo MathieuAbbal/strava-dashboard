@@ -169,6 +169,30 @@ Chart.register(...registerables);
           </div>
         }
 
+        <!-- Zones de fréquence cardiaque -->
+        @if (hrZones(); as zones) {
+          <div class="mt-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 p-6">
+            <h2 class="text-base font-semibold text-slate-700 mb-4">Zones de fréquence cardiaque</h2>
+            <div class="flex justify-center mb-6">
+              <div class="w-64 h-64">
+                <canvas #hrZonesChart></canvas>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              @for (zone of zones; track zone.name) {
+                <div class="rounded-xl border border-slate-200/60 p-3 text-center"
+                     [style.border-left]="'4px solid ' + zone.color">
+                  <p class="text-xs font-semibold uppercase tracking-wider" [style.color]="zone.color">{{ zone.name }}</p>
+                  <p class="text-[11px] text-slate-400 mt-0.5">{{ zone.label }}</p>
+                  <p class="text-xs text-slate-500 mt-0.5">{{ zone.minHr }} - {{ zone.maxHr }} bpm</p>
+                  <p class="text-lg font-extrabold text-slate-800 mt-1">{{ zone.percentage }}%</p>
+                  <p class="text-xs text-slate-400">{{ zone.timeFormatted }}</p>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
         <!-- Splits / Laps -->
         @if (lapsLoading()) {
           <div class="mt-6 text-center py-8">
@@ -371,10 +395,14 @@ export class ActivityDetailComponent {
   /** Référence canvas pour le graphique d'analyse */
   private readonly analysisCanvas = viewChild<ElementRef<HTMLCanvasElement>>('analysisChart');
 
+  /** Référence canvas pour le graphique des zones FC */
+  private readonly hrZonesCanvas = viewChild<ElementRef<HTMLCanvasElement>>('hrZonesChart');
+
   /** Instances */
   private map: maplibregl.Map | null = null;
   private splitsChart: Chart | null = null;
   private analysisChart: Chart | null = null;
+  private hrZonesChart: Chart | null = null;
 
   /** Données pour le graphique des splits */
   private readonly splitsData = computed(() => {
@@ -402,6 +430,71 @@ export class ActivityDetailComponent {
     return { labels, paces, colors, avgPace, isRunning: running };
   });
 
+  /** Zones de fréquence cardiaque calculées depuis le stream heartrate */
+  protected readonly hrZones = computed(() => {
+    const act = this.activity();
+    const streamData = this.streams();
+    if (!act || streamData.length === 0) return null;
+
+    const hrStream = streamData.find(s => s.type === 'heartrate');
+    if (!hrStream || hrStream.data.length === 0) return null;
+
+    const maxHr = act.max_heartrate ?? 190;
+    const timeStream = streamData.find(s => s.type === 'time');
+
+    const zoneDefs = [
+      { name: 'Zone 1', label: 'Récupération', pctMin: 0.50, pctMax: 0.60, color: '#3b82f6' },
+      { name: 'Zone 2', label: 'Endurance', pctMin: 0.60, pctMax: 0.70, color: '#22c55e' },
+      { name: 'Zone 3', label: 'Tempo', pctMin: 0.70, pctMax: 0.80, color: '#eab308' },
+      { name: 'Zone 4', label: 'Threshold', pctMin: 0.80, pctMax: 0.90, color: '#f97316' },
+      { name: 'Zone 5', label: 'VO2max', pctMin: 0.90, pctMax: 1.00, color: '#ef4444' },
+    ];
+
+    const zoneSeconds = [0, 0, 0, 0, 0];
+    const hrData = hrStream.data;
+    const timeData = timeStream?.data;
+
+    for (let i = 0; i < hrData.length; i++) {
+      const hr = hrData[i];
+      const pct = hr / maxHr;
+      let zoneIdx = 0;
+      if (pct >= 0.90) zoneIdx = 4;
+      else if (pct >= 0.80) zoneIdx = 3;
+      else if (pct >= 0.70) zoneIdx = 2;
+      else if (pct >= 0.60) zoneIdx = 1;
+      else zoneIdx = 0;
+
+      // Temps écoulé depuis le point précédent
+      let dt: number;
+      if (timeData && i > 0) {
+        dt = timeData[i] - timeData[i - 1];
+      } else if (timeData && i === 0) {
+        dt = 0;
+      } else {
+        dt = 1; // estimation : 1 seconde par échantillon
+      }
+      zoneSeconds[zoneIdx] += dt;
+    }
+
+    const totalSeconds = zoneSeconds.reduce((a, b) => a + b, 0);
+    if (totalSeconds === 0) return null;
+
+    return zoneDefs.map((def, i) => {
+      const secs = zoneSeconds[i];
+      const percentage = Math.round((secs / totalSeconds) * 100);
+      return {
+        name: def.name,
+        label: def.label,
+        color: def.color,
+        minHr: Math.round(maxHr * def.pctMin),
+        maxHr: Math.round(maxHr * def.pctMax),
+        seconds: secs,
+        percentage,
+        timeFormatted: this.formatZoneTime(secs),
+      };
+    });
+  });
+
   constructor() {
     this.fromPage.set(this.route.snapshot.queryParamMap.get('from'));
 
@@ -424,6 +517,15 @@ export class ActivityDetailComponent {
       const data = this.splitsData();
       if (canvas && data) {
         this.renderSplitsChart(canvas, data);
+      }
+    });
+
+    // Rendre le graphique des zones FC (doughnut)
+    effect(() => {
+      const canvas = this.hrZonesCanvas();
+      const zones = this.hrZones();
+      if (canvas && zones) {
+        this.renderHrZonesChart(canvas, zones);
       }
     });
 
@@ -866,5 +968,58 @@ export class ActivityDetailComponent {
         scales
       }
     });
+  }
+
+  /** Rendre le doughnut chart des zones FC */
+  private renderHrZonesChart(
+    canvasRef: ElementRef<HTMLCanvasElement>,
+    zones: { name: string; label: string; color: string; seconds: number; percentage: number; timeFormatted: string }[]
+  ): void {
+    if (this.hrZonesChart) this.hrZonesChart.destroy();
+
+    this.hrZonesChart = new Chart(canvasRef.nativeElement, {
+      type: 'doughnut',
+      data: {
+        labels: zones.map(z => `${z.name} - ${z.label}`),
+        datasets: [{
+          data: zones.map(z => z.seconds),
+          backgroundColor: zones.map(z => z.color),
+          borderColor: '#ffffff',
+          borderWidth: 2,
+          hoverBorderWidth: 3,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: '55%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1B1F3B',
+            padding: 12,
+            cornerRadius: 8,
+            callbacks: {
+              label: (item) => {
+                const zone = zones[item.dataIndex];
+                return ` ${zone.name} : ${zone.timeFormatted} (${zone.percentage}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  /** Formate une durée en secondes en texte lisible */
+  private formatZoneTime(seconds: number): string {
+    if (seconds >= 3600) {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      return `${h}h ${m}min`;
+    }
+    const m = Math.floor(seconds / 60);
+    const s = Math.round(seconds % 60);
+    return `${m} min ${s} sec`;
   }
 }

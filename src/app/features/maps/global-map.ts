@@ -6,11 +6,11 @@ import {
   ElementRef,
   effect,
   signal,
-  computed
+  computed,
+  untracked
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { StravaService } from '../../core/services/strava.service';
-import { ActivitySummary } from '../../core/models/strava.models';
 import { decodePolyline, toGeoJsonCoords } from '../../core/utils/polyline';
 import { activityColor, activityTypeFr, metersToKm, secondsToHoursMin, formatDateFr } from '../../core/utils/format';
 import maplibregl from 'maplibre-gl';
@@ -30,7 +30,7 @@ import maplibregl from 'maplibre-gl';
       <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 p-4 mb-6 flex flex-wrap gap-4 items-center">
         <!-- Filtre par type -->
         <div class="flex gap-1.5 flex-wrap">
-          @for (t of activityTypes; track t.key) {
+          @for (t of activityTypes(); track t.key) {
             <button (click)="toggleType(t.key)"
                     class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                     [class]="selectedTypes().has(t.key)
@@ -41,6 +41,17 @@ import maplibregl from 'maplibre-gl';
             </button>
           }
         </div>
+
+        <span class="w-px h-6 bg-slate-200 hidden sm:block"></span>
+
+        <!-- Toggle Heatmap -->
+        <button (click)="heatmapMode.set(!heatmapMode())"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                [class]="heatmapMode()
+                  ? 'bg-strava text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'">
+          Heatmap
+        </button>
 
         <span class="w-px h-6 bg-slate-200 hidden sm:block"></span>
 
@@ -73,7 +84,7 @@ import maplibregl from 'maplibre-gl';
 
       <!-- Nombre d'activités affichées -->
       <p class="text-sm text-slate-400 mt-3 text-right font-medium">
-        {{ filteredActivities().length }} / {{ strava.activitiesCount() }} activités affichées
+        {{ geoJsonData().features.length }} / {{ activitiesWithTrack() }} activités affichées
       </p>
     </div>
   `
@@ -88,26 +99,34 @@ export class GlobalMap {
   /** Instance MapLibre */
   private map: maplibregl.Map | null = null;
 
+  /** La carte est-elle prête (load event fired) ? */
+  private mapReady = false;
+
+  /** Le style de carte actuellement chargé */
+  private currentStyle: 'light' | 'dark' = 'light';
+
   /** Popup partagée pour le survol */
   private popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: '280px' });
 
   /** ID de la feature actuellement survolée */
   private hoveredId: number | null = null;
 
-  /** Types d'activités pour le filtre */
-  readonly activityTypes = [
-    { key: 'Run', label: 'Course', color: '#ef4444' },
-    { key: 'TrailRun', label: 'Trail', color: '#dc2626' },
-    { key: 'Ride', label: 'Vélo', color: '#3b82f6' },
-    { key: 'VirtualRide', label: 'Vélo virtuel', color: '#60a5fa' },
-    { key: 'Hike', label: 'Randonnée', color: '#22c55e' },
-    { key: 'Walk', label: 'Marche', color: '#84cc16' },
-    { key: 'Swim', label: 'Natation', color: '#06b6d4' },
-    { key: 'Workout', label: 'Entraînement', color: '#f59e0b' },
-  ];
+  /** Types d'activités présents dans les données et ayant un tracé GPS */
+  readonly activityTypes = computed(() => {
+    const types = new Set(
+      this.strava.activities()
+        .filter(a => a.map?.summary_polyline)
+        .map(a => a.type)
+    );
+    return [...types].map(key => ({
+      key,
+      label: activityTypeFr(key),
+      color: activityColor(key)
+    }));
+  });
 
-  /** Types actuellement sélectionnés */
-  readonly selectedTypes = signal<Set<string>>(new Set(this.activityTypes.map(t => t.key)));
+  /** Types actuellement sélectionnés (mis à jour quand de nouveaux types apparaissent) */
+  readonly selectedTypes = signal<Set<string>>(new Set());
 
   /** Périodes disponibles */
   readonly periods = [
@@ -119,6 +138,9 @@ export class GlobalMap {
 
   /** Période sélectionnée */
   readonly selectedPeriod = signal('all');
+
+  /** Mode heatmap */
+  readonly heatmapMode = signal(false);
 
   /** Activités filtrées par type et période */
   readonly filteredActivities = computed(() => {
@@ -136,6 +158,43 @@ export class GlobalMap {
     return activities;
   });
 
+  /** Nombre total d'activités avec tracé GPS */
+  protected readonly activitiesWithTrack = computed(() =>
+    this.strava.activities().filter(a => a.map?.summary_polyline).length
+  );
+
+  /** Features GeoJSON construites à partir des activités filtrées */
+  protected readonly geoJsonData = computed(() => {
+    const activities = this.filteredActivities();
+    const features: GeoJSON.Feature[] = [];
+
+    activities.forEach((activity, index) => {
+      const polyline = activity.map?.summary_polyline;
+      if (!polyline) return;
+
+      const coords = toGeoJsonCoords(decodePolyline(polyline));
+      if (coords.length === 0) return;
+
+      features.push({
+        type: 'Feature',
+        id: index,
+        properties: {
+          name: activity.name,
+          type: activity.type,
+          color: activityColor(activity.type),
+          distance: activity.distance,
+          moving_time: activity.moving_time,
+          total_elevation_gain: activity.total_elevation_gain,
+          start_date: activity.start_date,
+          activityId: activity.id
+        },
+        geometry: { type: 'LineString', coordinates: coords }
+      });
+    });
+
+    return { type: 'FeatureCollection' as const, features };
+  });
+
   /** Activer/désactiver un type d'activité */
   toggleType(key: string): void {
     const current = new Set(this.selectedTypes());
@@ -148,123 +207,128 @@ export class GlobalMap {
   }
 
   constructor() {
-    // Charger toutes les activités au démarrage
+    // Synchroniser les types sélectionnés avec les types disponibles
+    effect(() => {
+      const available = this.activityTypes();
+      const availableKeys = new Set(available.map(t => t.key));
+      const current = untracked(() => this.selectedTypes());
+      // Ajouter les nouveaux types automatiquement
+      const updated = new Set(current);
+      let changed = false;
+      for (const key of availableKeys) {
+        if (!updated.has(key)) { updated.add(key); changed = true; }
+      }
+      // Retirer les types qui n'existent plus
+      for (const key of updated) {
+        if (!availableKeys.has(key)) { updated.delete(key); changed = true; }
+      }
+      if (changed) this.selectedTypes.set(updated);
+    });
+
     afterNextRender(() => {
       if (this.strava.activities().length === 0) {
         this.strava.loadActivities(1, 200);
       }
     });
 
-    // Dessiner les tracés quand les données ou les filtres changent
+    // Créer la carte quand le conteneur est prêt
     effect(() => {
-      const activities = this.filteredActivities();
       const container = this.mapContainer();
-      if (container && activities.length > 0) {
-        this.initMap(container.nativeElement, activities);
+      const heatmap = this.heatmapMode();
+      const targetStyle = heatmap ? 'dark' : 'light';
+
+      if (!container) return;
+
+      // Recréer la carte uniquement si elle n'existe pas ou si le style change (heatmap toggle)
+      if (!this.map || this.currentStyle !== targetStyle) {
+        this.createMap(container.nativeElement, heatmap);
+      }
+    });
+
+    // Mettre à jour les données quand les filtres changent
+    effect(() => {
+      const data = this.geoJsonData();
+      const heatmap = this.heatmapMode();
+      if (this.map && this.mapReady) {
+        this.updateData(data, heatmap);
       }
     });
   }
 
-  /**
-   * Initialiser la carte et afficher tous les tracés
-   */
-  private initMap(container: HTMLElement, activities: ActivitySummary[]): void {
-    // Nettoyer la carte précédente
+  /** Créer la carte MapLibre (appelé une seule fois ou lors du changement de style) */
+  private createMap(container: HTMLElement, heatmap: boolean): void {
+    // Nettoyer l'ancienne carte
     if (this.map) {
-      this.map.remove();
+      this.popup.remove();
+      this.hoveredId = null;
+      try { this.map.remove(); } catch { /* ignore */ }
+      this.map = null;
+      this.mapReady = false;
     }
 
-    // Trouver le centre initial (première activité avec coordonnées)
+    this.currentStyle = heatmap ? 'dark' : 'light';
+
+    const activities = this.filteredActivities();
     const firstWithCoords = activities.find(a => a.start_latlng);
     const center: [number, number] = firstWithCoords?.start_latlng
       ? [firstWithCoords.start_latlng[1], firstWithCoords.start_latlng[0]]
-      : [2.3522, 48.8566]; // Paris par défaut
+      : [2.3522, 48.8566];
 
     this.map = new maplibregl.Map({
       container,
-      style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+      style: heatmap
+        ? 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
+        : 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
       center,
       zoom: 10
     });
 
     this.map.on('load', () => {
-      const bounds = new maplibregl.LngLatBounds();
-      const features: GeoJSON.Feature[] = [];
+      this.mapReady = true;
 
-      // Construire une FeatureCollection unique
-      activities.forEach((activity, index) => {
-        const polyline = activity.map?.summary_polyline;
-        if (!polyline) return;
-
-        const coords = toGeoJsonCoords(decodePolyline(polyline));
-        if (coords.length === 0) return;
-
-        coords.forEach(coord => bounds.extend(coord as maplibregl.LngLatLike));
-
-        features.push({
-          type: 'Feature',
-          id: index,
-          properties: {
-            name: activity.name,
-            type: activity.type,
-            color: activityColor(activity.type),
-            distance: activity.distance,
-            moving_time: activity.moving_time,
-            total_elevation_gain: activity.total_elevation_gain,
-            start_date: activity.start_date,
-            activityId: activity.id
-          },
-          geometry: { type: 'LineString', coordinates: coords }
-        });
-      });
-
-      if (features.length === 0) return;
-
-      // Source unique avec toutes les activités
+      // Ajouter la source vide
       this.map!.addSource('activities', {
         type: 'geojson',
-        data: { type: 'FeatureCollection', features }
+        data: { type: 'FeatureCollection', features: [] }
       });
 
-      // Layer invisible plus large pour faciliter le clic/tap sur mobile
+      // Layer invisible pour faciliter le clic/tap sur mobile
       this.map!.addLayer({
         id: 'activities-hitarea',
         type: 'line',
         source: 'activities',
-        paint: {
-          'line-color': 'transparent',
-          'line-width': 20
-        }
+        paint: { 'line-color': 'transparent', 'line-width': 20 }
       });
 
-      // Layer visible avec couleur data-driven et hover via feature-state
+      // Layer visible
       this.map!.addLayer({
         id: 'activities-line',
         type: 'line',
         source: 'activities',
         paint: {
-          'line-color': ['get', 'color'],
-          'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 5, 3],
-          'line-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 1, 0.25]
+          'line-color': heatmap ? '#FC4C02' : ['get', 'color'],
+          'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 6, 3],
+          'line-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 1, heatmap ? 0.15 : 0.25]
         }
       });
 
-      // Handler commun pour le survol/tap
-      const interactionLayers = ['activities-hitarea', 'activities-line'];
+      // Événements
+      const layers = ['activities-hitarea', 'activities-line'];
 
       const handleHover = (e: maplibregl.MapMouseEvent & { features?: maplibregl.GeoJSONFeature[] }) => {
+        if (!this.map) return;
         const feature = e.features?.[0];
         if (!feature) return;
 
-        this.map!.getCanvas().style.cursor = 'pointer';
+        this.map.getCanvas().style.cursor = 'pointer';
         const id = feature.id as number;
 
         if (this.hoveredId !== null && this.hoveredId !== id) {
-          this.map!.setFeatureState({ source: 'activities', id: this.hoveredId }, { hover: false });
+          this.map.setFeatureState({ source: 'activities', id: this.hoveredId }, { hover: false });
         }
         if (this.hoveredId !== id) {
           this.hoveredId = id;
-          this.map!.setFeatureState({ source: 'activities', id }, { hover: true });
+          this.map.setFeatureState({ source: 'activities', id }, { hover: true });
         }
 
         const props = feature.properties;
@@ -283,30 +347,61 @@ export class GlobalMap {
       };
 
       const handleLeave = () => {
-        this.map!.getCanvas().style.cursor = '';
+        if (!this.map) return;
+        this.map.getCanvas().style.cursor = '';
         if (this.hoveredId !== null) {
-          this.map!.setFeatureState({ source: 'activities', id: this.hoveredId }, { hover: false });
+          this.map.setFeatureState({ source: 'activities', id: this.hoveredId }, { hover: false });
           this.hoveredId = null;
         }
         this.popup.remove();
       };
 
       const handleClick = (e: maplibregl.MapMouseEvent & { features?: maplibregl.GeoJSONFeature[] }) => {
+        if (!this.map) return;
         const activityId = e.features?.[0]?.properties?.['activityId'];
         if (activityId) {
           this.router.navigate(['/activities', activityId], { queryParams: { from: 'map' } });
         }
       };
 
-      // Attacher les événements sur les deux layers
-      for (const layer of interactionLayers) {
+      for (const layer of layers) {
         this.map!.on('mousemove', layer, handleHover);
         this.map!.on('mouseleave', layer, handleLeave);
         this.map!.on('click', layer, handleClick);
       }
 
-      // Ajuster la vue pour afficher tous les tracés
-      this.map!.fitBounds(bounds, { padding: 50 });
+      // Charger les données initiales
+      this.updateData(this.geoJsonData(), heatmap);
     });
+  }
+
+  /** Mettre à jour les données GeoJSON sans recréer la carte */
+  private updateData(data: GeoJSON.FeatureCollection, _heatmap: boolean): void {
+    if (!this.map || !this.mapReady) return;
+
+    const source = this.map.getSource('activities') as maplibregl.GeoJSONSource;
+    if (!source) return;
+
+    // Reset hover
+    this.popup.remove();
+    if (this.hoveredId !== null) {
+      try { this.map.setFeatureState({ source: 'activities', id: this.hoveredId }, { hover: false }); } catch { /* ignore */ }
+      this.hoveredId = null;
+    }
+
+    // Mettre à jour les données
+    source.setData(data);
+
+    // Ajuster la vue si il y a des features
+    if (data.features.length > 0) {
+      const bounds = new maplibregl.LngLatBounds();
+      for (const feature of data.features) {
+        const coords = (feature.geometry as GeoJSON.LineString).coordinates;
+        for (const coord of coords) {
+          bounds.extend(coord as maplibregl.LngLatLike);
+        }
+      }
+      this.map.fitBounds(bounds, { padding: 50 });
+    }
   }
 }
