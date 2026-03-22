@@ -12,7 +12,7 @@ import {
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 import { StravaService } from '../../core/services/strava.service';
-import { ActivityDetail as ActivityDetailModel, Lap, ActivityStream, BestEffort } from '../../core/models/strava.models';
+import { ActivityDetail as ActivityDetailModel, Lap, ActivityStream, BestEffort, Kudoer } from '../../core/models/strava.models';
 import {
   metersToKm,
   secondsToHoursMin,
@@ -59,9 +59,36 @@ Chart.register(...registerables);
                   {{ act.type }}
                 </span>
               </div>
-              <p class="text-slate-400 mt-1">{{ formatDate(act.start_date) }}</p>
+              <div class="flex items-center gap-3 mt-1">
+                <p class="text-slate-400">{{ formatDate(act.start_date) }}</p>
+                @if (act.kudos_count) {
+                  <span class="flex items-center gap-1 text-orange-500 font-semibold text-sm">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                    {{ act.kudos_count }}
+                  </span>
+                }
+                @if (act.comment_count) {
+                  <span class="flex items-center gap-1 text-slate-400 font-semibold text-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                    {{ act.comment_count }}
+                  </span>
+                }
+              </div>
             </div>
           </div>
+          <!-- Kudoers -->
+          @if (kudoers().length > 0) {
+            <div class="flex items-center gap-2 mt-3 pl-18 flex-wrap">
+              <span class="inline-flex items-center bg-orange-50 text-orange-500 rounded-full px-2.5 py-1 text-xs font-bold border border-orange-200/60">
+                {{ kudoers().length }} kudos
+              </span>
+              @for (k of kudoers(); track $index) {
+                <span class="inline-flex items-center bg-orange-50 text-orange-600 rounded-full px-2.5 py-1 text-xs font-semibold border border-orange-200/60">
+                  {{ k.firstname }} {{ k.lastname }}
+                </span>
+              }
+            </div>
+          }
           @if (act.description) {
             <p class="text-slate-500 mt-2 pl-18">{{ act.description }}</p>
           }
@@ -375,6 +402,9 @@ export class ActivityDetailComponent {
   protected readonly streams = signal<ActivityStream[]>([]);
   protected readonly streamsLoading = signal(false);
 
+  /** Signal : kudoers de l'activité */
+  protected readonly kudoers = signal<Kudoer[]>([]);
+
   /** Toggles pour les courbes d'analyse */
   protected readonly showHeartrate = signal(false);
   protected readonly showPace = signal(false);
@@ -557,15 +587,17 @@ export class ActivityDetailComponent {
       this.lapsLoading.set(true);
       this.streamsLoading.set(true);
 
-      const [laps, streams] = await Promise.all([
+      const [laps, streams, kudoers] = await Promise.all([
         this.strava.getActivityLaps(detail.id),
-        this.strava.getActivityStreams(detail.id)
+        this.strava.getActivityStreams(detail.id),
+        detail.kudos_count ? this.strava.getActivityKudos(detail.id) : Promise.resolve([])
       ]);
 
       this.laps.set(laps);
       this.lapsLoading.set(false);
       this.streams.set(streams);
       this.streamsLoading.set(false);
+      this.kudoers.set(kudoers);
     }
   }
 
@@ -650,7 +682,11 @@ export class ActivityDetailComponent {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#1B1F3B',
+            backgroundColor: '#ffffff',
+            titleColor: '#1e293b',
+            bodyColor: '#334155',
+            borderColor: '#000000',
+            borderWidth: 1,
             padding: 12,
             cornerRadius: 8,
             callbacks: {
@@ -943,7 +979,11 @@ export class ActivityDetailComponent {
             }
           },
           tooltip: {
-            backgroundColor: '#1B1F3B',
+            backgroundColor: '#ffffff',
+            titleColor: '#1e293b',
+            bodyColor: '#334155',
+            borderColor: '#000000',
+            borderWidth: 1,
             titleFont: { weight: 'bold' },
             padding: 12,
             cornerRadius: 8,
@@ -996,7 +1036,11 @@ export class ActivityDetailComponent {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#1B1F3B',
+            backgroundColor: '#ffffff',
+            titleColor: '#1e293b',
+            bodyColor: '#334155',
+            borderColor: '#000000',
+            borderWidth: 1,
             padding: 12,
             cornerRadius: 8,
             callbacks: {

@@ -8,10 +8,12 @@ import {
   ElementRef,
   afterNextRender
 } from '@angular/core';
+import { Router } from '@angular/router';
 import { StravaService } from '../../core/services/strava.service';
 import { ActivitySummary } from '../../core/models/strava.models';
 import { activityColor, activityTypeFr, metersToKm, secondsToHoursMin } from '../../core/utils/format';
 import { Chart, registerables } from 'chart.js';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 Chart.register(...registerables);
 
@@ -202,7 +204,9 @@ const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep'
                     @for (day of week.days; track $index) {
                       <td class="py-3 px-1 text-center">
                         @if (day.hasActivity) {
-                          <div class="mx-auto flex flex-col items-center gap-0.5" [title]="day.tooltip">
+                          <div class="mx-auto flex flex-col items-center gap-0.5 cursor-pointer"
+                               [title]="day.tooltip"
+                               (click)="goToActivity(day.activityIds)">
                             @for (c of day.colors; track $index) {
                               <div class="rounded-full transition-all"
                                    [style.width.px]="day.colors.length > 1 ? 10 : 12 + day.pct * 0.16"
@@ -234,7 +238,25 @@ const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep'
             <canvas #barChart></canvas>
           </div>
           <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 p-6 hover:shadow-md transition-shadow duration-300">
-            <h2 class="text-base font-semibold text-slate-700 mb-4">Répartition par type</h2>
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-base font-semibold text-slate-700">Répartition par type</h2>
+              <div class="flex gap-1 bg-slate-100 rounded-lg p-0.5">
+                @for (opt of typeChartOptions; track opt.value) {
+                  <div class="relative group">
+                    <button
+                      (click)="selectTypeChart(opt.value)"
+                      [class]="selectedTypeChart() === opt.value
+                        ? 'bg-white text-slate-700 shadow-sm rounded-md px-2 py-1 text-xs font-medium transition-all'
+                        : 'text-slate-400 hover:text-slate-600 rounded-md px-2 py-1 text-xs font-medium transition-all'">
+                      {{ opt.icon }}
+                    </button>
+                    <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-white text-slate-700 text-[10px] rounded-lg border border-black shadow-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      {{ opt.label }}
+                    </span>
+                  </div>
+                }
+              </div>
+            </div>
             <canvas #typeChart></canvas>
           </div>
         </div>
@@ -256,6 +278,7 @@ const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep'
   `
 })
 export class Dashboard {
+  private readonly router = inject(Router);
   protected readonly strava = inject(StravaService);
 
   /** Période sélectionnée */
@@ -271,6 +294,28 @@ export class Dashboard {
     { key: 'year' as Period, label: 'Année' },
     { key: 'all' as Period, label: 'Tout' },
   ];
+
+  /** Naviguer vers une activité au clic */
+  protected goToActivity(ids: number[]): void {
+    if (ids.length === 1) {
+      this.router.navigate(['/activities', ids[0]]);
+    } else if (ids.length > 1) {
+      this.router.navigate(['/activities', ids[0]]);
+    }
+  }
+
+  /** Options de type de graphique pour la répartition */
+  protected readonly typeChartOptions = [
+    { value: 'doughnut' as const, label: 'Doughnut', icon: '◎' },
+    { value: 'pie' as const, label: 'Pie', icon: '●' },
+    { value: 'bar' as const, label: 'Barres', icon: '▮' },
+    { value: 'polarArea' as const, label: 'Polar', icon: '✦' },
+  ];
+  protected readonly selectedTypeChart = signal<'doughnut' | 'pie' | 'bar' | 'polarArea'>('doughnut');
+
+  protected selectTypeChart(type: 'doughnut' | 'pie' | 'bar' | 'polarArea'): void {
+    this.selectedTypeChart.set(type);
+  }
 
   /** Références canvas */
   private readonly barCanvas = viewChild<ElementRef<HTMLCanvasElement>>('barChart');
@@ -563,7 +608,7 @@ export class Dashboard {
       duration: string;
       elevation: number;
       isCurrent: boolean;
-      days: { pct: number; hasActivity: boolean; inRange: boolean; colors: string[]; tooltip: string }[];
+      days: { pct: number; hasActivity: boolean; inRange: boolean; colors: string[]; tooltip: string; activityIds: number[] }[];
     }[] = [];
 
     // Bornes de la période pour filtrer les jours hors plage
@@ -582,7 +627,7 @@ export class Dashboard {
       const isCurrent = todayStr >= this.toLocalDateStr(weekStart) && todayStr <= this.toLocalDateStr(weekEnd);
 
       let count = 0, dist = 0, elev = 0, time = 0;
-      const days: { pct: number; hasActivity: boolean; inRange: boolean; colors: string[]; tooltip: string }[] = [];
+      const days: { pct: number; hasActivity: boolean; inRange: boolean; colors: string[]; tooltip: string; activityIds: number[] }[] = [];
 
       for (let d = 0; d < 7; d++) {
         const day = new Date(weekStart);
@@ -608,7 +653,8 @@ export class Dashboard {
           ? dayActs.map(a => `${a.name} — ${metersToKm(a.distance)} km, ${secondsToHoursMin(a.moving_time)}`).join('\n') + `\n${dayLabel}`
           : dayLabel;
 
-        days.push({ pct, hasActivity: dayActs.length > 0, inRange, colors, tooltip });
+        const activityIds = dayActs.map(a => a.id);
+        days.push({ pct, hasActivity: dayActs.length > 0, inRange, colors, tooltip, activityIds });
       }
 
       if (count > 0 || isCurrent) {
@@ -646,7 +692,7 @@ export class Dashboard {
     effect(() => {
       this.renderBar(this.durationCanvas(), this.durationData(), 'duration', '#8b5cf6', 'h');
     });
-    effect(() => { this.renderTypeChart(this.typeCanvas(), this.typeData()); });
+    effect(() => { this.renderTypeChart(this.typeCanvas(), this.typeData(), this.selectedTypeChart()); });
   }
 
   // ── Calcul des données pour les barres ──
@@ -742,12 +788,12 @@ export class Dashboard {
   private computeTypeDistribution(activities: ActivitySummary[]): { labels: string[]; data: number[]; colors: string[] } {
     const typeMap = new Map<string, number>();
     for (const act of activities) {
-      typeMap.set(act.type, (typeMap.get(act.type) ?? 0) + 1);
+      typeMap.set(act.type, (typeMap.get(act.type) ?? 0) + act.distance / 1000);
     }
     const sorted = [...typeMap.entries()].sort((a, b) => b[1] - a[1]);
     return {
       labels: sorted.map(([type]) => activityTypeFr(type)),
-      data: sorted.map(([, count]) => count),
+      data: sorted.map(([, km]) => Math.round(km * 10) / 10),
       colors: sorted.map(([type]) => activityColor(type))
     };
   }
@@ -786,7 +832,11 @@ export class Dashboard {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#1B1F3B',
+            backgroundColor: '#ffffff',
+            titleColor: '#1e293b',
+            bodyColor: '#334155',
+            borderColor: '#000000',
+            borderWidth: 1,
             titleFont: { weight: 'bold' },
             padding: 12,
             cornerRadius: 8,
@@ -817,29 +867,61 @@ export class Dashboard {
 
   private renderTypeChart(
     canvasRef: ElementRef<HTMLCanvasElement> | undefined,
-    data: { labels: string[]; data: number[]; colors: string[] }
+    data: { labels: string[]; data: number[]; colors: string[] },
+    chartType: 'doughnut' | 'pie' | 'bar' | 'polarArea' = 'doughnut'
   ): void {
     if (!canvasRef) return;
     if (this.typeChart) this.typeChart.destroy();
 
+    const isCircular = chartType === 'doughnut' || chartType === 'pie' || chartType === 'polarArea';
+
+    const tooltipLabel = (item: any) => {
+      const total = item.dataset.data.reduce((s: number, v: number) => s + v, 0);
+      const val = typeof item.parsed === 'object' ? item.parsed.y : item.parsed;
+      const pct = Math.round((val as number) / total * 100);
+      return ` ${item.label} : ${Math.round(val as number)} km (${pct}%)`;
+    };
+
+    const datalabelsConfig = {
+      color: chartType === 'bar' ? '#64748b' : '#fff',
+      font: { weight: 'bold' as const, size: 13 },
+      anchor: (chartType === 'bar' ? 'end' : 'center') as 'end' | 'center',
+      align: (chartType === 'bar' ? 'end' : 'center') as 'end' | 'center',
+      formatter: (_value: number, ctx: any) => {
+        const dataset = ctx.dataset.data as number[];
+        const total = dataset.reduce((s: number, v: number) => s + v, 0);
+        const pct = Math.round((_value / total) * 100);
+        return pct >= 5 ? `${pct}%` : '';
+      }
+    };
+
     this.typeChart = new Chart(canvasRef.nativeElement, {
-      type: 'doughnut',
+      type: chartType,
+      plugins: [ChartDataLabels],
       data: {
         labels: data.labels,
         datasets: [{
           data: data.data,
           backgroundColor: data.colors,
-          borderWidth: 3,
-          borderColor: '#ffffff',
-          hoverBorderColor: '#ffffff',
-          hoverOffset: 8
-        }]
+          borderWidth: isCircular ? 3 : 0,
+          borderColor: isCircular ? '#ffffff' : undefined,
+          hoverBorderColor: isCircular ? '#ffffff' : undefined,
+          borderRadius: chartType === 'bar' ? 6 : undefined,
+        } as any]
       },
       options: {
         responsive: true,
-        cutout: '60%',
+        ...(chartType === 'doughnut' ? { cutout: '60%' } : {}),
+        ...(chartType === 'bar' ? {
+          layout: { padding: { top: 20 } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 11 } } },
+            y: { grid: { color: '#f1f5f9' }, ticks: { color: '#94a3b8', font: { size: 11 } } }
+          }
+        } : {}),
         plugins: {
           legend: {
+            display: isCircular,
             position: 'bottom',
             labels: {
               padding: 16,
@@ -850,21 +932,20 @@ export class Dashboard {
             }
           },
           tooltip: {
-            backgroundColor: '#1B1F3B',
-            titleFont: { weight: 'bold' },
+            backgroundColor: '#ffffff',
+            titleColor: '#1e293b',
+            bodyColor: '#334155',
+            borderColor: '#000000',
+            borderWidth: 1,
+            titleFont: { weight: 'bold' as const },
             padding: 12,
             cornerRadius: 8,
-            callbacks: {
-              label: (item) => {
-                const total = item.dataset.data.reduce((s: number, v) => s + (v as number), 0);
-                const pct = Math.round((item.parsed as number) / total * 100);
-                return ` ${item.label} : ${item.parsed} (${pct}%)`;
-              }
-            }
-          }
+            callbacks: { label: tooltipLabel }
+          },
+          datalabels: datalabelsConfig as any
         }
       }
-    });
+    } as any);
   }
 
   /** Formater une date en YYYY-MM-DD en heure locale (évite le décalage UTC de toISOString) */

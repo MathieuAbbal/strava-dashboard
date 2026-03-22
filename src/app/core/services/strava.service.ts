@@ -6,7 +6,8 @@ import {
   ActivityDetail,
   AthleteStats,
   Lap,
-  ActivityStream
+  ActivityStream,
+  Kudoer
 } from '../models/strava.models';
 
 /** Clés localStorage pour persister les tokens entre les sessions */
@@ -349,6 +350,18 @@ export class StravaService {
         keys: 'distance,altitude,heartrate,velocity_smooth,cadence',
         key_type: 'distance'
       });
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Récupérer les kudoers d'une activité
+   * GET /activities/:id/kudos
+   */
+  async getActivityKudos(id: number): Promise<Kudoer[]> {
+    try {
+      return await this.fetchApi<Kudoer[]>(`/activities/${id}/kudos`);
     } catch {
       return [];
     }

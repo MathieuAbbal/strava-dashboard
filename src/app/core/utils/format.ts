@@ -51,9 +51,9 @@ export function activityColor(type: string): string {
     Workout: '#f59e0b',    // Ambre
     WeightTraining: '#a855f7', // Violet
     Yoga: '#ec4899',       // Rose
-    Snowboard: '#38bdf8',  // Bleu ciel
-    AlpineSki: '#7dd3fc',  // Bleu ciel clair
-    NordicSki: '#0ea5e9',  // Bleu
+    Snowboard: '#14b8a6',  // Teal
+    AlpineSki: '#06d6a0',  // Émeraude
+    NordicSki: '#2dd4bf',  // Teal clair
   };
   return colors[type] ?? '#6b7280'; // Gris par défaut
 }

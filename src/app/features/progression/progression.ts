@@ -520,9 +520,11 @@ export class Progression {
             }
           },
           tooltip: {
-            backgroundColor: '#1B1F3B',
-            titleColor: '#ffffff',
-            bodyColor: '#ffffff',
+            backgroundColor: '#ffffff',
+            titleColor: '#1e293b',
+            bodyColor: '#334155',
+            borderColor: '#000000',
+            borderWidth: 1,
             titleFont: { weight: 'bold' },
             padding: 12,
             cornerRadius: 8,

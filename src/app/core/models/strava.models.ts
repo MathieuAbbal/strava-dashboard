@@ -156,6 +156,14 @@ export interface Lap {
   max_heartrate?: number;
 }
 
+/** Athlète ayant donné un kudos */
+export interface Kudoer {
+  firstname: string;
+  lastname: string;
+  profile: string;
+  profile_medium?: string;
+}
+
 /** Record personnel dérivé des activités */
 export interface PersonalRecord {
   label: string;

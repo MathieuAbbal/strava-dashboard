@@ -5,7 +5,7 @@ Dashboard Angular pour visualiser vos activites Strava avec graphiques, cartes i
 ## Stack technique
 
 - **Angular 21** - Standalone components, Signals, Zoneless
-- **Chart.js** - Graphiques (barres, camembert, courbes de progression)
+- **Chart.js + chartjs-plugin-datalabels** - Graphiques (barres, camembert, doughnut, polar, courbes de progression)
 - **MapLibre GL JS** - Cartes interactives des traces GPS avec effet heatmap
 - **Tailwind CSS v4** - Styling utilitaire
 - **PWA** - Service Worker, manifest, installable sur mobile/desktop
@@ -137,7 +137,10 @@ En production, l'authentification se fait via OAuth : l'utilisateur clique "Se c
 - Comparaison vs periode precedente (% evolution)
 - Resume hebdomadaire : calendrier avec dots colores par activite et tooltips detailles
 - Separateurs par mois (vue annee) ou par annee (vue tout)
-- Graphiques : km par jour/mois, denivele, duree (en heures), repartition par type
+- Graphiques : km par jour/mois, denivele, duree (en heures), repartition par type (km)
+- Selecteur de type de graphique pour la repartition (doughnut, pie, barres, polar) avec tooltips
+- Labels de pourcentage directement sur les segments du graphique
+- Clic sur une activite du resume hebdomadaire pour naviguer vers le detail
 
 ### Activites (`/activities`)
 - Liste des activites avec icone, distance, duree, denivele, allure/vitesse, FC, watts
@@ -148,6 +151,7 @@ En production, l'authentification se fait via OAuth : l'utilisateur clique "Se c
 
 ### Detail activite (`/activities/:id`)
 - Statistiques detaillees (allure, FC, calories, splits...)
+- Kudoers : badges avec compteur de kudos et noms des kudoers
 - Carte MapLibre avec le trace GPS complet
 - Graphique d'analyse : altitude en fond + overlays FC, vitesse/allure, cadence
   - Lissage par moyenne glissante
@@ -233,4 +237,5 @@ src/
 | `GET /activities/:id` | Detail avec trace GPS, segments, best efforts |
 | `GET /activities/:id/streams` | Streams (altitude, FC, vitesse, cadence) |
 | `GET /activities/:id/laps` | Splits / laps |
+| `GET /activities/:id/kudos` | Liste des kudoers |
 | `GET /athletes/:id/stats` | Statistiques globales |
