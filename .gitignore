@@ -27,9 +27,6 @@ yarn-error.log
 # Claude
 .claude/
 
-# Environment (dev tokens)
-src/environments/environment.ts
-
 # Miscellaneous
 /.angular/cache
 .sass-cache/
