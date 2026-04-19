@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1774939076270,
+  "timestamp": 1776581141525,
   "index": "/strava-dashboard/index.html",
   "assetGroups": [
     {
@@ -11,23 +11,23 @@
         "ignoreVary": true
       },
       "urls": [
-        "/strava-dashboard/chunk-2YK5IH6N.js",
+        "/strava-dashboard/chunk-4FWB4VGV.js",
+        "/strava-dashboard/chunk-7ZU73DZD.js",
         "/strava-dashboard/chunk-BXCIBKMU.js",
-        "/strava-dashboard/chunk-IMAJQDNT.js",
-        "/strava-dashboard/chunk-JCOHWYJU.js",
-        "/strava-dashboard/chunk-LNS7PR5J.js",
-        "/strava-dashboard/chunk-P4J34DVF.js",
-        "/strava-dashboard/chunk-PLS3KXOM.js",
-        "/strava-dashboard/chunk-RIENZNYI.js",
-        "/strava-dashboard/chunk-SA3P6YU3.js",
-        "/strava-dashboard/chunk-VE4TEXS2.js",
-        "/strava-dashboard/chunk-VG6EF2LO.js",
-        "/strava-dashboard/chunk-YC5CDOYV.js",
+        "/strava-dashboard/chunk-LQQLNYOI.js",
+        "/strava-dashboard/chunk-MGKDAPY2.js",
+        "/strava-dashboard/chunk-PHG7UVIW.js",
+        "/strava-dashboard/chunk-SBWK5SML.js",
+        "/strava-dashboard/chunk-W72AEYN7.js",
+        "/strava-dashboard/chunk-WLWLLHGW.js",
+        "/strava-dashboard/chunk-XVF4W2MC.js",
+        "/strava-dashboard/chunk-YJHQHBBZ.js",
+        "/strava-dashboard/chunk-ZKKNNADU.js",
         "/strava-dashboard/favicon.ico",
         "/strava-dashboard/index.html",
-        "/strava-dashboard/main-7YVEHM26.js",
+        "/strava-dashboard/main-KUUB5ID5.js",
         "/strava-dashboard/manifest.webmanifest",
-        "/strava-dashboard/styles-DO564W6E.css"
+        "/strava-dashboard/styles-ZGTB7RC5.css"
       ],
       "patterns": []
     },
@@ -54,18 +54,18 @@
   ],
   "dataGroups": [],
   "hashTable": {
-    "/strava-dashboard/chunk-2YK5IH6N.js": "511d813efa1b77f631ff9efd72c167837a51d93e",
+    "/strava-dashboard/chunk-4FWB4VGV.js": "01ac1e182e9f6688f0fd4fe0e93b2db5176ea1f3",
+    "/strava-dashboard/chunk-7ZU73DZD.js": "2da03d62c85e88808f052253d835968c90309eae",
     "/strava-dashboard/chunk-BXCIBKMU.js": "68efbc493026116df4a530f616af7aadee374ab4",
-    "/strava-dashboard/chunk-IMAJQDNT.js": "21afd67b4fd0c27b399f08acd7883107dd1e091e",
-    "/strava-dashboard/chunk-JCOHWYJU.js": "bcbb3471c8506c6925f11d2ace4203aba20a56bb",
-    "/strava-dashboard/chunk-LNS7PR5J.js": "4cbab3080e31b69c3e24d616e03edd5e4dc56f2e",
-    "/strava-dashboard/chunk-P4J34DVF.js": "1ce3f171f4cc04cf8a501f6579330ebf672f8ffe",
-    "/strava-dashboard/chunk-PLS3KXOM.js": "5f169a44f14413897022fd1eafa2d7169afcfed1",
-    "/strava-dashboard/chunk-RIENZNYI.js": "9f5cc8de3083e72c08e11a9e58014a04cf1cb10f",
-    "/strava-dashboard/chunk-SA3P6YU3.js": "a3a36eadd3e8177865df83386eedb9408d03107a",
-    "/strava-dashboard/chunk-VE4TEXS2.js": "221e1c7848902c290bf098ce12268dd1329863a0",
-    "/strava-dashboard/chunk-VG6EF2LO.js": "06adeddb9398d94aac1e09a38cb491d4c2c4713d",
-    "/strava-dashboard/chunk-YC5CDOYV.js": "f0e00954e7c8ce7da4bfa0aa8bc72cf4e9c48046",
+    "/strava-dashboard/chunk-LQQLNYOI.js": "5a9688f060a598de1fb40280413a7a0a3a72a3a1",
+    "/strava-dashboard/chunk-MGKDAPY2.js": "d0647d039ad01f89dc428d82f89940d5290e0246",
+    "/strava-dashboard/chunk-PHG7UVIW.js": "4d8660a83355184c9df59d66df74123e6deb28e6",
+    "/strava-dashboard/chunk-SBWK5SML.js": "ae9e19df64765e5898708b32a080b7fb825332bc",
+    "/strava-dashboard/chunk-W72AEYN7.js": "59b8e867ca0151394223a25803ab6c78c6bd158b",
+    "/strava-dashboard/chunk-WLWLLHGW.js": "cd19dae0337eb08d5c5178b91df8c32f1c172bb9",
+    "/strava-dashboard/chunk-XVF4W2MC.js": "f9ee8082f2c1bcad91a520f51d02a9d975d7e9ac",
+    "/strava-dashboard/chunk-YJHQHBBZ.js": "333fb0c220ad2868cf15f541346ed3fd447fd770",
+    "/strava-dashboard/chunk-ZKKNNADU.js": "621aed20d780e44cf276b71bc74671844818da89",
     "/strava-dashboard/favicon.ico": "9c39f434fe1261f68c5e3eefdf734630d99c5670",
     "/strava-dashboard/icons/icon-128x128.png": "06cf487a6ccebf13155cd94d418c3ea8b8d6e5e2",
     "/strava-dashboard/icons/icon-144x144.png": "84dada224cf031f22b91e028797529c34b9199ab",
@@ -76,10 +76,10 @@
     "/strava-dashboard/icons/icon-72x72.png": "f4dab93f713b7c9c334a84d560937b36486be902",
     "/strava-dashboard/icons/icon-96x96.png": "620764c540a9e63bcbc24fd8527ce102cf51f92d",
     "/strava-dashboard/icons/icon.svg": "10c814da98b44ea8266765ea31dfb4f910de3e14",
-    "/strava-dashboard/index.html": "4138728361240c74d70db8e297ea87f1a706ea4b",
-    "/strava-dashboard/main-7YVEHM26.js": "b4548557ba52e7f63f7b9d773bd03a380526eab0",
+    "/strava-dashboard/index.html": "7909f83766c59aafd8240e07fe1fb1c293d07e9a",
+    "/strava-dashboard/main-KUUB5ID5.js": "0de9ee146fb0e6cb373faa22de5ff66c0dc556b9",
     "/strava-dashboard/manifest.webmanifest": "cc6140b6102aaee930a1fcc3d33aa2399bfc16e6",
-    "/strava-dashboard/styles-DO564W6E.css": "6021fdb0f7b96088303858f2cce3371bfd83f2bf"
+    "/strava-dashboard/styles-ZGTB7RC5.css": "0b9ae4ec0bac75ee9e037de692e83b9829e53255"
   },
   "navigationUrls": [
     {
