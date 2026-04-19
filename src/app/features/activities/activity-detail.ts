@@ -12,7 +12,7 @@ import {
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 import { StravaService } from '../../core/services/strava.service';
-import { ActivityDetail as ActivityDetailModel, Lap, ActivityStream, BestEffort, Kudoer } from '../../core/models/strava.models';
+import { ActivityDetail as ActivityDetailModel, Lap, ActivityStream, BestEffort, Kudoer, ActivityPhoto } from '../../core/models/strava.models';
 import {
   metersToKm,
   secondsToHoursMin,
@@ -93,6 +93,57 @@ Chart.register(...registerables);
             <p class="text-slate-500 mt-2 pl-18">{{ act.description }}</p>
           }
         </div>
+
+        <!-- Photos -->
+        @if (photos().length > 0) {
+          <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 p-6 mb-4">
+            <h2 class="text-base font-semibold text-slate-700 mb-4">Photos ({{ photos().length }})</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              @for (p of photos(); track p.unique_id; let i = $index) {
+                <button
+                  (click)="openLightbox(i)"
+                  class="aspect-square rounded-xl overflow-hidden bg-slate-100 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-orange-400">
+                  <img [src]="getPhotoUrl(p)" [alt]="p.caption || 'Photo activité'" class="w-full h-full object-cover" loading="lazy" />
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Lightbox -->
+        @if (lightboxIndex() !== null) {
+          <div
+            (click)="closeLightbox()"
+            class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
+            <button
+              (click)="closeLightbox(); $event.stopPropagation()"
+              class="absolute top-4 right-4 text-white/80 hover:text-white text-3xl leading-none w-10 h-10 flex items-center justify-center rounded-full bg-black/40 hover:bg-black/60">
+              ×
+            </button>
+            @if (photos().length > 1) {
+              <button
+                (click)="lightboxNav(-1); $event.stopPropagation()"
+                class="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white text-3xl w-10 h-10 flex items-center justify-center rounded-full bg-black/40 hover:bg-black/60">
+                ‹
+              </button>
+              <button
+                (click)="lightboxNav(1); $event.stopPropagation()"
+                class="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white text-3xl w-10 h-10 flex items-center justify-center rounded-full bg-black/40 hover:bg-black/60">
+                ›
+              </button>
+            }
+            <img
+              [src]="getPhotoUrl(photos()[lightboxIndex()!])"
+              [alt]="photos()[lightboxIndex()!].caption || ''"
+              (click)="$event.stopPropagation()"
+              class="max-w-full max-h-full object-contain rounded-lg" />
+            @if (photos()[lightboxIndex()!].caption) {
+              <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white text-sm px-4 py-2 rounded-lg max-w-2xl text-center">
+                {{ photos()[lightboxIndex()!].caption }}
+              </div>
+            }
+          </div>
+        }
 
         <!-- Statistiques principales -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
@@ -405,6 +456,12 @@ export class ActivityDetailComponent {
   /** Signal : kudoers de l'activité */
   protected readonly kudoers = signal<Kudoer[]>([]);
 
+  /** Signal : photos de l'activité */
+  protected readonly photos = signal<ActivityPhoto[]>([]);
+
+  /** Signal : index de la photo affichée en lightbox (null = fermée) */
+  protected readonly lightboxIndex = signal<number | null>(null);
+
   /** Toggles pour les courbes d'analyse */
   protected readonly showHeartrate = signal(false);
   protected readonly showPace = signal(false);
@@ -587,10 +644,11 @@ export class ActivityDetailComponent {
       this.lapsLoading.set(true);
       this.streamsLoading.set(true);
 
-      const [laps, streams, kudoers] = await Promise.all([
+      const [laps, streams, kudoers, photos] = await Promise.all([
         this.strava.getActivityLaps(detail.id),
         this.strava.getActivityStreams(detail.id),
-        detail.kudos_count ? this.strava.getActivityKudos(detail.id) : Promise.resolve([])
+        detail.kudos_count ? this.strava.getActivityKudos(detail.id) : Promise.resolve([]),
+        this.strava.getActivityPhotos(detail.id)
       ]);
 
       this.laps.set(laps);
@@ -598,7 +656,35 @@ export class ActivityDetailComponent {
       this.streams.set(streams);
       this.streamsLoading.set(false);
       this.kudoers.set(kudoers);
+      this.photos.set(photos);
     }
+  }
+
+  /** Retourne l'URL de la plus grande taille disponible pour une photo */
+  protected getPhotoUrl(photo: ActivityPhoto): string {
+    const urls = photo.urls ?? {};
+    const sizes = Object.keys(urls).map(Number).filter(n => !isNaN(n));
+    if (sizes.length === 0) return '';
+    const largest = Math.max(...sizes);
+    return urls[String(largest)];
+  }
+
+  /** Ouvre la lightbox sur une photo donnée */
+  protected openLightbox(index: number): void {
+    this.lightboxIndex.set(index);
+  }
+
+  /** Ferme la lightbox */
+  protected closeLightbox(): void {
+    this.lightboxIndex.set(null);
+  }
+
+  /** Navigation photo suivante/précédente dans la lightbox */
+  protected lightboxNav(delta: number): void {
+    const current = this.lightboxIndex();
+    if (current === null) return;
+    const count = this.photos().length;
+    this.lightboxIndex.set((current + delta + count) % count);
   }
 
   /**

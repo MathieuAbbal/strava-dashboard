@@ -164,6 +164,16 @@ export interface Kudoer {
   profile_medium?: string;
 }
 
+/** Photo d'une activité (retournée par GET /activities/{id}/photos) */
+export interface ActivityPhoto {
+  id?: number;
+  unique_id: string;
+  urls: { [size: string]: string };  // Clés : "100", "600", "2048"...
+  caption?: string;
+  created_at?: string;
+  location?: [number, number] | null;
+}
+
 /** Record personnel dérivé des activités */
 export interface PersonalRecord {
   label: string;

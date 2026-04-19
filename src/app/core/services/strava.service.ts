@@ -7,7 +7,8 @@ import {
   AthleteStats,
   Lap,
   ActivityStream,
-  Kudoer
+  Kudoer,
+  ActivityPhoto
 } from '../models/strava.models';
 
 /** Clés localStorage pour persister les tokens entre les sessions */
@@ -362,6 +363,18 @@ export class StravaService {
   async getActivityKudos(id: number): Promise<Kudoer[]> {
     try {
       return await this.fetchApi<Kudoer[]>(`/activities/${id}/kudos`);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Récupérer les photos d'une activité
+   * GET /activities/:id/photos?size=2048&photo_sources=true
+   */
+  async getActivityPhotos(id: number): Promise<ActivityPhoto[]> {
+    try {
+      return await this.fetchApi<ActivityPhoto[]>(`/activities/${id}/photos?size=2048&photo_sources=true`);
     } catch {
       return [];
     }
