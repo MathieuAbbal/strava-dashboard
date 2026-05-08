@@ -23,6 +23,7 @@ import {
   activityColor
 } from '../../core/utils/format';
 import { decodePolyline, toGeoJsonCoords } from '../../core/utils/polyline';
+import { environment } from '../../../environments/environment';
 import maplibregl from 'maplibre-gl';
 import { Chart, registerables } from 'chart.js';
 
@@ -199,7 +200,34 @@ Chart.register(...registerables);
 
         <!-- Carte du tracé -->
         <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
-          <h2 class="text-base font-semibold text-slate-700 p-5 pb-0">Tracé GPS</h2>
+          <div class="flex items-center justify-between p-5 pb-0">
+            <h2 class="text-base font-semibold text-slate-700">Tracé GPS</h2>
+            <div class="flex items-center gap-2">
+              <button
+                (click)="togglePlay()"
+                [title]="playing() ? 'Arrêter' : 'Lire le parcours'"
+                [class.bg-strava]="playing()"
+                [class.text-white]="playing()"
+                [class.bg-slate-100]="!playing()"
+                [class.text-slate-700]="!playing()"
+                class="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold border border-slate-200 hover:shadow-sm transition-all">
+                @if (playing()) {
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                } @else {
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                }
+              </button>
+              <button
+                (click)="toggle3D()"
+                [class.bg-strava]="is3D()"
+                [class.text-white]="is3D()"
+                [class.bg-slate-100]="!is3D()"
+                [class.text-slate-700]="!is3D()"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 hover:shadow-sm transition-all">
+                3D
+              </button>
+            </div>
+          </div>
           <div #mapContainer class="h-[500px] w-full mt-3"></div>
         </div>
 
@@ -462,6 +490,21 @@ export class ActivityDetailComponent {
   /** Signal : index de la photo affichée en lightbox (null = fermée) */
   protected readonly lightboxIndex = signal<number | null>(null);
 
+  /** Signal : mode 3D activé sur la carte */
+  protected readonly is3D = signal(false);
+
+  /** Signal : lecture animée du parcours en cours */
+  protected readonly playing = signal(false);
+
+  /** Référence au marqueur animé sur la carte */
+  private playMarker: maplibregl.Marker | null = null;
+
+  /** ID du requestAnimationFrame en cours */
+  private animationFrameId: number | null = null;
+
+  /** Durée totale de l'animation (60 secondes pour parcourir toute l'activité) */
+  private readonly animTotalDuration = 60_000;
+
   /** Toggles pour les courbes d'analyse */
   protected readonly showHeartrate = signal(false);
   protected readonly showPace = signal(false);
@@ -685,6 +728,114 @@ export class ActivityDetailComponent {
     if (current === null) return;
     const count = this.photos().length;
     this.lightboxIndex.set((current + delta + count) % count);
+  }
+
+  /** Démarrer ou arrêter la lecture animée du parcours */
+  protected togglePlay(): void {
+    if (this.playing()) {
+      this.stopPlayback();
+    } else {
+      this.startPlayback();
+    }
+  }
+
+  /** Démarre l'animation du marqueur sur le parcours en respectant le rythme réel */
+  private startPlayback(): void {
+    const map = this.map;
+    if (!map) return;
+
+    const latlngStream = this.streams().find(s => s.type === 'latlng');
+    const timeStream = this.streams().find(s => s.type === 'time');
+    if (!latlngStream || !timeStream) return;
+
+    const latlngs = latlngStream.data as unknown as [number, number][];
+    const times = timeStream.data;
+    if (latlngs.length === 0 || times.length === 0) return;
+
+    const el = document.createElement('div');
+    el.style.cssText = 'width:18px;height:18px;border-radius:50%;background:#fc4c02;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);';
+
+    this.playMarker = new maplibregl.Marker({ element: el })
+      .setLngLat([latlngs[0][1], latlngs[0][0]])
+      .addTo(map);
+
+    this.playing.set(true);
+    const startTime = performance.now();
+    const totalActivityTime = times[times.length - 1];
+
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / this.animTotalDuration, 1);
+      const currentActivityTime = progress * totalActivityTime;
+
+      let i = 0;
+      while (i < times.length - 1 && times[i + 1] < currentActivityTime) i++;
+
+      const t0 = times[i];
+      const t1 = times[Math.min(i + 1, times.length - 1)];
+      const ratio = t1 === t0 ? 0 : (currentActivityTime - t0) / (t1 - t0);
+      const p0 = latlngs[i];
+      const p1 = latlngs[Math.min(i + 1, latlngs.length - 1)];
+      const lat = p0[0] + (p1[0] - p0[0]) * ratio;
+      const lng = p0[1] + (p1[1] - p0[1]) * ratio;
+
+      this.playMarker?.setLngLat([lng, lat]);
+
+      if (progress < 1 && this.playing()) {
+        this.animationFrameId = requestAnimationFrame(tick);
+      } else {
+        this.stopPlayback();
+      }
+    };
+    this.animationFrameId = requestAnimationFrame(tick);
+  }
+
+  /** Arrête l'animation et nettoie le marqueur */
+  private stopPlayback(): void {
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    if (this.playMarker) {
+      this.playMarker.remove();
+      this.playMarker = null;
+    }
+    this.playing.set(false);
+  }
+
+  /** Activer/désactiver le mode 3D sur la carte (terrain MapTiler + tilt caméra) */
+  protected toggle3D(): void {
+    if (!this.map) return;
+    const next = !this.is3D();
+    this.is3D.set(next);
+
+    const map = this.map;
+    const DEM_SOURCE_ID = 'maptiler-dem';
+    const HILLSHADE_LAYER_ID = 'maptiler-hillshade';
+
+    if (next) {
+      if (!map.getSource(DEM_SOURCE_ID)) {
+        map.addSource(DEM_SOURCE_ID, {
+          type: 'raster-dem',
+          url: `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${environment.maptilerKey}`,
+          tileSize: 256
+        });
+      }
+      if (!map.getLayer(HILLSHADE_LAYER_ID)) {
+        map.addLayer({
+          id: HILLSHADE_LAYER_ID,
+          type: 'hillshade',
+          source: DEM_SOURCE_ID,
+          paint: { 'hillshade-exaggeration': 0.6 }
+        }, 'route-line');
+      }
+      map.setTerrain({ source: DEM_SOURCE_ID, exaggeration: 1.5 });
+      map.easeTo({ pitch: 60, bearing: -20, duration: 800 });
+    } else {
+      map.setTerrain(null);
+      if (map.getLayer(HILLSHADE_LAYER_ID)) map.removeLayer(HILLSHADE_LAYER_ID);
+      map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
+    }
   }
 
   /**

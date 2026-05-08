@@ -8,5 +8,6 @@ export const environment = {
     clientSecret: '0a96d93dc3c7d23aa25562690e84fd830718bdec',
     accessToken: '',
     refreshToken: ''
-  }
+  },
+  maptilerKey: 'gFo9NAK14hwpQNC0vjKE'
 };

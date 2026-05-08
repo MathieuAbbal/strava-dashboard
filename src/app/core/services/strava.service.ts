@@ -348,7 +348,7 @@ export class StravaService {
   async getActivityStreams(id: number): Promise<ActivityStream[]> {
     try {
       return await this.fetchApi<ActivityStream[]>(`/activities/${id}/streams`, {
-        keys: 'distance,altitude,heartrate,velocity_smooth,cadence',
+        keys: 'distance,altitude,heartrate,velocity_smooth,cadence,latlng,time',
         key_type: 'distance'
       });
     } catch {
