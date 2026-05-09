@@ -505,6 +505,9 @@ export class ActivityDetailComponent {
   /** Durée totale de l'animation (60 secondes pour parcourir toute l'activité) */
   private readonly animTotalDuration = 60_000;
 
+  /** État de caméra à restaurer en fin de lecture */
+  private playbackCameraSnapshot: { center: maplibregl.LngLat; zoom: number; bearing: number; pitch: number } | null = null;
+
   /** Toggles pour les courbes d'analyse */
   protected readonly showHeartrate = signal(false);
   protected readonly showPace = signal(false);
@@ -759,9 +762,37 @@ export class ActivityDetailComponent {
       .setLngLat([latlngs[0][1], latlngs[0][0]])
       .addTo(map);
 
+    this.playbackCameraSnapshot = {
+      center: map.getCenter(),
+      zoom: map.getZoom(),
+      bearing: map.getBearing(),
+      pitch: map.getPitch()
+    };
+
+    const targetZoom = Math.max(map.getZoom(), 15.5);
+    const targetPitch = this.is3D() ? 65 : 50;
+    map.easeTo({
+      center: [latlngs[0][1], latlngs[0][0]],
+      zoom: targetZoom,
+      pitch: targetPitch,
+      duration: 1000
+    });
+
     this.playing.set(true);
     const startTime = performance.now();
     const totalActivityTime = times[times.length - 1];
+    let smoothedBearing = map.getBearing();
+    let prevLat = latlngs[0][0];
+    let prevLng = latlngs[0][1];
+
+    const computeBearing = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+      const toRad = (d: number) => d * Math.PI / 180;
+      const dLng = toRad(lng2 - lng1);
+      const y = Math.sin(dLng) * Math.cos(toRad(lat2));
+      const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2))
+              - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
+      return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    };
 
     const tick = (now: number) => {
       const elapsed = now - startTime;
@@ -781,6 +812,20 @@ export class ActivityDetailComponent {
 
       this.playMarker?.setLngLat([lng, lat]);
 
+      const dLat = lat - prevLat;
+      const dLng = lng - prevLng;
+      if (Math.abs(dLat) + Math.abs(dLng) > 1e-7) {
+        const targetBearing = computeBearing(prevLat, prevLng, lat, lng);
+        let diff = targetBearing - smoothedBearing;
+        if (diff > 180) diff -= 360;
+        if (diff < -180) diff += 360;
+        smoothedBearing = (smoothedBearing + diff * 0.08 + 360) % 360;
+        prevLat = lat;
+        prevLng = lng;
+      }
+
+      map.jumpTo({ center: [lng, lat], bearing: smoothedBearing });
+
       if (progress < 1 && this.playing()) {
         this.animationFrameId = requestAnimationFrame(tick);
       } else {
@@ -799,6 +844,17 @@ export class ActivityDetailComponent {
     if (this.playMarker) {
       this.playMarker.remove();
       this.playMarker = null;
+    }
+    if (this.map && this.playbackCameraSnapshot) {
+      const snap = this.playbackCameraSnapshot;
+      this.map.easeTo({
+        center: snap.center,
+        zoom: snap.zoom,
+        bearing: snap.bearing,
+        pitch: snap.pitch,
+        duration: 1200
+      });
+      this.playbackCameraSnapshot = null;
     }
     this.playing.set(false);
   }
