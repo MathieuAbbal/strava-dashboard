@@ -205,13 +205,21 @@ Chart.register(...registerables);
             <div class="flex items-center gap-2">
               <button
                 (click)="togglePlay()"
-                [title]="playing() ? 'Arrêter' : 'Lire le parcours'"
-                [class.bg-strava]="playing()"
-                [class.text-white]="playing()"
-                [class.bg-slate-100]="!playing()"
-                [class.text-slate-700]="!playing()"
+                [disabled]="!playReady() || startingPlayback()"
+                [title]="!playReady() ? 'Chargement du parcours...' : (startingPlayback() ? 'Démarrage...' : (playing() ? 'Arrêter' : 'Lire le parcours'))"
+                [class.bg-strava]="playing() || startingPlayback()"
+                [class.text-white]="playing() || startingPlayback()"
+                [class.bg-slate-100]="!playing() && !startingPlayback()"
+                [class.text-slate-700]="!playing() && !startingPlayback()"
+                [class.opacity-60]="!playReady()"
+                [class.cursor-not-allowed]="!playReady() || startingPlayback()"
                 class="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold border border-slate-200 hover:shadow-sm transition-all">
-                @if (playing()) {
+                @if (!playReady() || startingPlayback()) {
+                  <span class="inline-block h-3 w-3 animate-spin rounded-full border-2"
+                        [class.border-white]="startingPlayback()"
+                        [class.border-r-transparent]="true"
+                        [class.border-slate-400]="!startingPlayback()"></span>
+                } @else if (playing()) {
                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
                 } @else {
                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
@@ -481,6 +489,12 @@ export class ActivityDetailComponent {
   protected readonly streams = signal<ActivityStream[]>([]);
   protected readonly streamsLoading = signal(false);
 
+  /** Signal computed : true si les streams nécessaires à la lecture animée sont prêts */
+  protected readonly playReady = computed(() => {
+    const s = this.streams();
+    return s.some(x => x.type === 'latlng') && s.some(x => x.type === 'time');
+  });
+
   /** Signal : kudoers de l'activité */
   protected readonly kudoers = signal<Kudoer[]>([]);
 
@@ -495,6 +509,9 @@ export class ActivityDetailComponent {
 
   /** Signal : lecture animée du parcours en cours */
   protected readonly playing = signal(false);
+
+  /** Signal : phase de démarrage de la lecture (caméra qui se positionne) */
+  protected readonly startingPlayback = signal(false);
 
   /** Référence au marqueur animé sur la carte */
   private playMarker: maplibregl.Marker | null = null;
@@ -737,7 +754,8 @@ export class ActivityDetailComponent {
   protected togglePlay(): void {
     if (this.playing()) {
       this.stopPlayback();
-    } else {
+    } else if (this.playReady()) {
+      this.startingPlayback.set(true);
       this.startPlayback();
     }
   }
@@ -771,19 +789,20 @@ export class ActivityDetailComponent {
 
     const targetZoom = Math.max(map.getZoom(), 15.5);
     const targetPitch = this.is3D() ? 65 : 50;
+    const easeDuration = 1000;
     map.easeTo({
       center: [latlngs[0][1], latlngs[0][0]],
       zoom: targetZoom,
       pitch: targetPitch,
-      duration: 1000
+      duration: easeDuration
     });
 
     this.playing.set(true);
-    const startTime = performance.now();
     const totalActivityTime = times[times.length - 1];
     let smoothedBearing = map.getBearing();
     let prevLat = latlngs[0][0];
     let prevLng = latlngs[0][1];
+    let startTime = 0;
 
     const computeBearing = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
       const toRad = (d: number) => d * Math.PI / 180;
@@ -792,6 +811,17 @@ export class ActivityDetailComponent {
       const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2))
               - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
       return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    };
+
+    const startLat = latlngs[0][0];
+    const startLng = latlngs[0][1];
+    const haversine = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+      const R = 6371000;
+      const toRad = (d: number) => d * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLng = toRad(lng2 - lng1);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     };
 
     const tick = (now: number) => {
@@ -826,13 +856,26 @@ export class ActivityDetailComponent {
 
       map.jumpTo({ center: [lng, lat], bearing: smoothedBearing });
 
+      // Cacher le spinner uniquement quand le marqueur a parcouru au moins 100m
+      // (pour qu'on perçoive un vrai déplacement) ou après 4s max en fallback
+      if (this.startingPlayback() && (haversine(startLat, startLng, lat, lng) > 100 || elapsed > 4000)) {
+        this.startingPlayback.set(false);
+      }
+
       if (progress < 1 && this.playing()) {
         this.animationFrameId = requestAnimationFrame(tick);
       } else {
         this.stopPlayback();
       }
     };
-    this.animationFrameId = requestAnimationFrame(tick);
+
+    // Démarre le tick uniquement quand l'easeTo de la caméra est terminé,
+    // pour éviter que jumpTo (dans tick) annule l'animation initiale de caméra
+    setTimeout(() => {
+      if (!this.playing()) return;
+      startTime = performance.now();
+      this.animationFrameId = requestAnimationFrame(tick);
+    }, easeDuration);
   }
 
   /** Arrête l'animation et nettoie le marqueur */
@@ -841,6 +884,7 @@ export class ActivityDetailComponent {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
+    this.startingPlayback.set(false);
     if (this.playMarker) {
       this.playMarker.remove();
       this.playMarker = null;
